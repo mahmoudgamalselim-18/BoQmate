@@ -50,10 +50,20 @@ export async function POST(request) {
     }
 
     return Response.json(data);
-  } catch (error) {
-  console.error("Anthropic API Error:", error);
-  // السطر ده هيخلي أي تفاصيل مستخبية من سيرفر كلود تظهر برضه على الشاشة
-  const errorMessage = error.message || JSON.stringify(error);
-  return NextResponse.json({ error: errorMessage }, { status: 500 });
+  } catch (error) 
+  console.error("Anthropic API Raw Error:", error);
+  
+  let clearMessage = "خطأ في الاتصال بسيرفر كلود";
+  
+  // إذا كان الخطأ راجع من طلب fetch يدوي وتفاصيله مستخبة جوه كائن الخطأ
+  if (error.error && error.error.message) {
+    clearMessage = error.error.message;
+  } else if (error.message) {
+    clearMessage = error.message;
+  } else if (typeof error === 'object') {
+    clearMessage = JSON.stringify(error);
   }
+
+  return NextResponse.json({ error: clearMessage }, { status: 500 });
+}
 }
