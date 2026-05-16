@@ -3,8 +3,7 @@
 // نفس الفكرة — max_tokens أكبر لأن الشيت ممكن يكون كبير
 
 export async function POST(request) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-
+  const apiKey = "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"
   if (!apiKey) {
     return Response.json(
       { error: "ANTHROPIC_API_KEY غير مضبوط في بيئة السيرفر" },
@@ -34,7 +33,7 @@ export async function POST(request) {
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
-        model: "claude-3-haiku-20240307",
+        model: "claude-3-5-sonnet-20241022",
         max_tokens: 3000,
         messages,
       }),
