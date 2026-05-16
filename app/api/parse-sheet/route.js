@@ -50,7 +50,7 @@ export async function POST(request) {
     }
 
     return Response.json(data);
-  } catch (error) 
+  } catch (error) {
   console.error("Anthropic API Raw Error:", error);
   
   let clearMessage = "خطأ في الاتصال بسيرفر كلود";
