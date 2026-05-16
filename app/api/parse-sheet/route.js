@@ -50,10 +50,10 @@ export async function POST(request) {
     }
 
     return Response.json(data);
-  } catch (err) {
-    return Response.json(
-      { error: `فشل الاتصال بـ Anthropic: ${err.message}` },
-      { status: 502 }
-    );
+  } catch (error) {
+  console.error("Anthropic API Error:", error);
+  // السطر ده هيخلي أي تفاصيل مستخبية من سيرفر كلود تظهر برضه على الشاشة
+  const errorMessage = error.message || JSON.stringify(error);
+  return NextResponse.json({ error: errorMessage }, { status: 500 });
   }
 }
