@@ -3,7 +3,7 @@
 // نفس الفكرة — max_tokens أكبر لأن الشيت ممكن يكون كبير
 
 export async function POST(request) {
-  const apiKey = "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"
+  const apiKey = "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"
   if (!apiKey) {
     return Response.json(
       { error: "ANTHROPIC_API_KEY غير مضبوط في بيئة السيرفر" },
