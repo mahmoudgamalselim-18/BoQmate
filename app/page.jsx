@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 // ============================================================
 // GLOBAL STYLES & FONT INJECTION
@@ -8,10 +8,10 @@ const GlobalStyle = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Cairo', sans-serif; background: #0a0f1e; color: #e8eaf0; direction: rtl; }
+    body { font-family: 'Cairo', sans-serif; background: #0f0f0f; color: #f0f0f0; direction: rtl; }
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #0d1525; }
-    ::-webkit-scrollbar-thumb { background: #f5a623; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb { background: #C67D4E; border-radius: 3px; }
     input, textarea, select { font-family: 'Cairo', sans-serif; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
@@ -25,59 +25,35 @@ const GlobalStyle = () => (
 // ============================================================
 // DESIGN TOKENS
 // ============================================================
+// Logo is embedded as inline SVG
+
 const C = {
-  navy: "#0a0f1e",
-  navyMid: "#0d1525",
-  navyLight: "#131d35",
-  navyCard: "#172040",
-  border: "#1e2d4d",
-  borderLight: "#253560",
-  gold: "#f5a623",
-  goldDark: "#d4891a",
-  goldLight: "#ffc044",
-  accent: "#4fc3f7",
-  accentDim: "#1a3a52",
-  success: "#4caf50",
-  danger: "#ef5350",
-  warning: "#ff9800",
-  text: "#e8eaf0",
-  textMuted: "#8899b8",
-  textDim: "#4a5a7a",
+  navy: "#0f0f0f",
+  navyMid: "#141414",
+  navyLight: "#1a1a1a",
+  navyCard: "#1c1c1c",
+  border: "#252525",
+  borderLight: "#333333",
+  gold: "#C67D4E",
+  goldDark: "#a8622f",
+  goldLight: "#d99060",
+  accent: "#C67D4E",
+  accentDim: "rgba(198,125,78,0.12)",
+  success: "#4ade80",
+  danger: "#f87171",
+  warning: "#fb923c",
+  text: "#f0f0f0",
+  textMuted: "#888888",
+  textDim: "#555555",
   white: "#ffffff",
 };
 
 // ============================================================
-// GLOBAL PRICE DATABASE (Read-Only, Hardcoded)
+// GLOBAL PRICE DATABASE — يُسحب من Supabase
 // ============================================================
-const GLOBAL_DB = [
-  // خامات أساسية
-  { id: "g1", category: "خرسانة", name: "خرسانة جاهزة C25", unit: "م³", price: 1850, type: "خامة" },
-  { id: "g2", category: "خرسانة", name: "خرسانة جاهزة C30", unit: "م³", price: 2100, type: "خامة" },
-  { id: "g3", category: "حديد تسليح", name: "حديد تسليح Ø10", unit: "طن", price: 28500, type: "خامة" },
-  { id: "g4", category: "حديد تسليح", name: "حديد تسليح Ø12", unit: "طن", price: 28200, type: "خامة" },
-  { id: "g5", category: "حديد تسليح", name: "حديد تسليح Ø16", unit: "طن", price: 27800, type: "خامة" },
-  { id: "g6", category: "حديد تسليح", name: "حديد تسليح Ø20", unit: "طن", price: 27500, type: "خامة" },
-  { id: "g7", category: "مباني", name: "طوب أحمر عادي", unit: "ألف طوبة", price: 1200, type: "خامة" },
-  { id: "g8", category: "مباني", name: "طوب أبلكاش", unit: "ألف طوبة", price: 950, type: "خامة" },
-  { id: "g9", category: "مباني", name: "بلوك خرسانة 20×20×40", unit: "م²", price: 85, type: "خامة" },
-  { id: "g10", category: "مونة", name: "أسمنت بورتلاند", unit: "شيكارة 50كج", price: 185, type: "خامة" },
-  { id: "g11", category: "مونة", name: "رمل نظيف", unit: "م³", price: 280, type: "خامة" },
-  { id: "g12", category: "مونة", name: "زلط 3/4", unit: "م³", price: 320, type: "خامة" },
-  { id: "g13", category: "عزل", name: "فوم بولي يوريثان", unit: "م²", price: 95, type: "خامة" },
-  { id: "g14", category: "عزل", name: "شيت بيتومين مسلح", unit: "م²", price: 75, type: "خامة" },
-  { id: "g15", category: "تشطيب", name: "بلاط سيراميك 60×60 عادي", unit: "م²", price: 180, type: "خامة" },
-  { id: "g16", category: "تشطيب", name: "بورسلين 80×80 إيطالي", unit: "م²", price: 650, type: "خامة" },
-  { id: "g17", category: "تشطيب", name: "دهان بلاستيك اقتصادي", unit: "لتر", price: 45, type: "خامة" },
-  { id: "g18", category: "تشطيب", name: "دهان بلاستيك فاخر", unit: "لتر", price: 95, type: "خامة" },
-  // مصنعيات
-  { id: "g19", category: "مصنعية خرسانة", name: "صب خرسانة يدوي", unit: "م³", price: 250, type: "مصنعية" },
-  { id: "g20", category: "مصنعية خرسانة", name: "شمبر خشبي", unit: "م²", price: 85, type: "مصنعية" },
-  { id: "g21", category: "مصنعية حديد", name: "تسليح ونقل حديد", unit: "طن", price: 1500, type: "مصنعية" },
-  { id: "g22", category: "مصنعية مباني", name: "مصنعية بناء طوب", unit: "م²", price: 65, type: "مصنعية" },
-  { id: "g23", category: "مصنعية تشطيب", name: "فرد بلاط وسيراميك", unit: "م²", price: 75, type: "مصنعية" },
-  { id: "g24", category: "مصنعية تشطيب", name: "دهانات (فرد + بطانة)", unit: "م²", price: 35, type: "مصنعية" },
-  { id: "g25", category: "مصنعية عزل", name: "تركيب عزل بيتومين", unit: "م²", price: 45, type: "مصنعية" },
-];
+// GLOBAL_DB بيتحمل من الـ API عند بداية التطبيق
+// الـ components بتستخدم globalDB state من الـ BoQmate component
+let GLOBAL_DB = []; // fallback فارغ — بيتملى من Supabase
 
 // ============================================================
 // AI SYSTEM PROMPT (Few-Shot)
@@ -240,7 +216,7 @@ const PaywallModal = ({ open, onClose, type }) => (
 // ============================================================
 // TAB: PRICE MANAGEMENT
 // ============================================================
-const PriceManagementTab = () => {
+const PriceManagementTab = ({ globalDB = [], dbLoading = false }) => {
   const [privateDB, setPrivateDB] = useState(() => LS.get("boqmate_private_db", []));
   const [activeView, setActiveView] = useState("global");
   const [showForm, setShowForm] = useState(false);
@@ -262,7 +238,7 @@ const PriceManagementTab = () => {
   const handleEdit = (item) => { setForm({ name: item.name, category: item.category, unit: item.unit, price: String(item.price), type: item.type }); setEditId(item.id); setShowForm(true); };
   const handleDelete = (id) => savePrivate(privateDB.filter(x => x.id !== id));
 
-  const db = activeView === "global" ? GLOBAL_DB : privateDB;
+  const db = activeView === "global" ? globalDB : privateDB;
   const filtered = db.filter(x => x.name.includes(search) || (x.category || "").includes(search));
 
   return (
@@ -312,7 +288,7 @@ const PriceManagementTab = () => {
         </div>
         {filtered.length === 0 ? (
           <div style={{ padding: 40, textAlign: "center", color: C.textMuted }}>
-            {activeView === "private" ? "لا توجد خامات خاصة بعد. أضف خاماتك الآن ←" : "لا توجد نتائج"}
+            {dbLoading && activeView === "global" ? "⏳ جاري تحميل الأسعار من قاعدة البيانات..." : activeView === "private" ? "لا توجد خامات خاصة بعد. أضف خاماتك الآن ←" : "لا توجد نتائج"}
           </div>
         ) : filtered.map((item, i) => (
           <div key={item.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr auto", gap: 0, padding: "12px 20px", borderBottom: i < filtered.length - 1 ? `1px solid ${C.border}` : "none", alignItems: "center", transition: "background 0.15s" }}
@@ -425,7 +401,7 @@ const SHEET_PARSER_PROMPT = `أنت محلل مقايسات محترف. سيتم
 // ============================================================
 // TAB: UPLOAD & ANALYZE BoQ
 // ============================================================
-const UploadTab = ({ onAnalysisComplete }) => {
+const UploadTab = ({ onAnalysisComplete, globalDB = [] }) => {
   const [inputMode, setInputMode] = useState("excel"); // "excel" | "text"
   const [boqText, setBoqText] = useState("");
   const [excelFile, setExcelFile] = useState(null);
@@ -469,7 +445,7 @@ const UploadTab = ({ onAnalysisComplete }) => {
 
   // ── Step 2: Price each item ──────────────────────────────────
   const analyzeItem = async (item, privateDB) => {
-    const mergedDB = [...privateDB, ...GLOBAL_DB.filter(g => !privateDB.find(p => p.name === g.name))];
+    const mergedDB = [...privateDB, ...globalDB.filter(g => !privateDB.find(p => p.name === g.name))];
     const dbContext = mergedDB.slice(0, 35).map(x => `${x.name} (${x.unit}): ${x.price} \u062c.\u0645`).join("\n");
     const lineDesc = item.quantity != null
       ? `${item.description} - \u0627\u0644\u0643\u0645\u064a\u0629: ${item.quantity} ${item.unit || ""}`
@@ -493,7 +469,7 @@ const UploadTab = ({ onAnalysisComplete }) => {
   };
 
   const calcCost = (analysis, privateDB) => {
-    const mergedDB = [...privateDB, ...GLOBAL_DB.filter(g => !privateDB.find(p => p.name === g.name))];
+    const mergedDB = [...privateDB, ...globalDB.filter(g => !privateDB.find(p => p.name === g.name))];
     let total = 0;
     const breakdown = (analysis.components || []).map(c => {
       const dbEntry = mergedDB.find(x => x.name.includes(c.name.split(" ")[0]) || c.name.includes(x.name.split(" ")[0]));
@@ -979,6 +955,22 @@ const SettingsTab = () => {
 export default function BoQmate() {
   const [tab, setTab] = useState("upload");
   const [analysisResults, setAnalysisResults] = useState([]);
+  const [globalDB, setGlobalDB] = useState([]);
+  const [dbLoading, setDbLoading] = useState(true);
+
+  // سحب أسعار السوق من Supabase عند بداية التطبيق
+  useEffect(() => {
+    fetch("/api/prices")
+      .then(r => r.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setGlobalDB(data);
+          GLOBAL_DB = data; // sync global var for AI functions
+        }
+      })
+      .catch(e => console.error("فشل تحميل الأسعار:", e))
+      .finally(() => setDbLoading(false));
+  }, []);
 
   const tabs = [
     { id: "upload", label: "رفع المقايسة", icon: "📋" },
@@ -995,13 +987,10 @@ export default function BoQmate() {
         <nav style={{ background: C.navyMid, borderBottom: `1px solid ${C.border}`, padding: "0 32px", position: "sticky", top: 0, zIndex: 100, backdropFilter: "blur(12px)" }}>
           <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
             {/* Logo */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 36, height: 36, background: `linear-gradient(135deg, ${C.gold}, ${C.goldDark})`, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 900, color: C.navy }}>B</div>
-              <div>
-                <span style={{ fontSize: 20, fontWeight: 900, color: C.text }}>BoQ</span>
-                <span style={{ fontSize: 20, fontWeight: 900, color: C.gold }}>mate</span>
-              </div>
-              <Badge color={C.accent}>Beta</Badge>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div dangerouslySetInnerHTML={{ __html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="108 48 90 105" width="26" height="30"><g fill="#C67D4E" transform="matrix(1.0065966844558716,0,0,1.0065966844558716,99.818833649152,56.64806114538712)"><path d="m83.3 26.3-10-.7v-8.9c0-1.1-.9-2-2-2H28.7c-1.1 0-2 .9-2 2v8.9l-10 .7c-.5 0-1 .3-1.4.7-.3.4-.5.9-.5 1.5l3.8 54.9c.1 1.1 1 1.9 2 1.9h.1l29.1-2 29.1 2h.1c.5 0 .9-.2 1.3-.5s.6-.8.7-1.4l3.8-54.9c.4-1.1-.4-2.1-1.5-2.2m-52.6-7.5h38.5v51H30.7zm-8.1 62.3L19 30.2l7.7-.5v42.2c0 1.1.9 2 2 2h6.6l-.4 6.3v.1zm54.8 0L39 78.4l.3-4.6h31.9c1.1 0 2-.9 2-2V29.6l7.7.5z"></path><path d="M61.7 25.3H38.3c-1.1 0-2 .9-2 2s.9 2 2 2h23.4c1.1 0 2-.9 2-2s-.9-2-2-2m0 8.5H38.3c-1.1 0-2 .9-2 2s.9 2 2 2h23.4c1.1 0 2-.9 2-2s-.9-2-2-2m0 8.5H38.3c-1.1 0-2 .9-2 2s.9 2 2 2h23.4c1.1 0 2-.9 2-2s-.9-2-2-2m0 8.5H38.3c-1.1 0-2 .9-2 2s.9 2 2 2h23.4c1.1 0 2-.9 2-2s-.9-2-2-2m0 8.5H38.3c-1.1 0-2 .9-2 2s.9 2 2 2h23.4c1.1 0 2-.9 2-2s-.9-2-2-2"></path></g></svg>` }} style={{ display: "flex", alignItems: "center", flexShrink: 0 }} />
+              <div dangerouslySetInnerHTML={{ __html: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="15 138 272 72" width="116" height="30"><g transform="matrix(4.34782600402832,0,0,4.34782600402832,17.304347770963247,145.64119438359015)"><path fill="#ffffff" d="M6.40 14.06C7.67 14.06 8.32 13.40 8.32 12.08L8.32 10.26C8.32 9.42 7.95 8.92 7.11 8.74C7.91 8.60 8.29 8.05 8.29 7.08L8.29 5.40C8.29 4.07 7.64 3.42 6.36 3.42L0.62 3.42L0.62 14.06ZM5.91 11.03C5.91 11.31 5.77 11.45 5.49 11.45L3.04 11.45L3.04 9.80L5.49 9.80C5.77 9.80 5.91 9.94 5.91 10.22ZM5.91 7.24C5.91 7.52 5.77 7.66 5.49 7.66L3.04 7.66L3.04 6.02L5.49 6.02C5.77 6.02 5.91 6.16 5.91 6.44ZM14.71 10.96C14.71 11.24 14.57 11.38 14.29 11.38L12.28 11.38C12.00 11.38 11.86 11.24 11.86 10.96L11.86 6.51C11.86 6.23 12.00 6.09 12.28 6.09L14.29 6.09C14.57 6.09 14.71 6.23 14.71 6.51ZM15.20 14.06C16.49 14.06 17.12 13.44 17.12 12.19L17.12 5.36C17.12 4.06 16.49 3.42 15.20 3.42L11.35 3.42C10.08 3.42 9.44 4.06 9.44 5.36L9.44 12.19C9.44 13.44 10.08 14.06 11.35 14.06ZM25.19 15.79L26.60 14.34L25.65 13.36C25.83 13.06 25.93 12.67 25.93 12.19L25.93 5.36C25.93 4.06 25.28 3.42 24.01 3.42L20.16 3.42C18.89 3.42 18.24 4.06 18.24 5.36L18.24 12.19C18.24 13.44 18.89 14.06 20.16 14.06L23.41 14.06ZM23.52 10.96C23.52 11.24 23.38 11.38 23.10 11.38L21.08 11.38C20.80 11.38 20.66 11.24 20.66 10.96L20.66 6.51C20.66 6.23 20.80 6.09 21.08 6.09L23.10 6.09C23.38 6.09 23.52 6.23 23.52 6.51Z"/><path fill="#C67D4E" d="M38.12 14.06L38.12 7.78C38.12 6.48 37.49 5.84 36.22 5.84L28.99 5.84C27.72 5.84 27.08 6.48 27.08 7.77L27.08 14.06L29.47 14.06L29.47 8.69C29.47 8.41 29.61 8.27 29.89 8.27L31.40 8.27L31.40 14.06L33.80 14.06L33.80 8.27L35.34 8.27C35.60 8.27 35.76 8.41 35.76 8.69L35.76 14.06ZM44.21 11.52C44.21 11.70 44.11 11.80 43.93 11.80L41.89 11.80C41.71 11.80 41.61 11.70 41.61 11.52L41.61 10.95C41.61 10.77 41.71 10.67 41.89 10.67L43.93 10.67C44.11 10.67 44.21 10.77 44.21 10.95ZM44.74 14.06C46.00 14.06 46.63 13.41 46.63 12.12L46.63 7.77C46.63 6.48 45.98 5.84 44.67 5.84L39.52 5.84L39.52 8.13L43.79 8.13C44.07 8.13 44.21 8.27 44.21 8.55L44.21 9.17C44.09 9.11 43.93 9.07 43.75 9.07L40.99 9.07C39.80 9.07 39.20 9.70 39.20 10.98L39.20 12.19C39.20 13.44 39.80 14.06 40.99 14.06ZM52.12 14.06L52.12 11.63L50.60 11.63C50.36 11.63 50.23 11.48 50.23 11.16L50.23 8.13L52.14 8.13L52.14 5.92L50.23 5.92L50.23 3.56L47.81 3.56L47.81 12.25C47.81 13.45 48.48 14.06 49.81 14.06ZM58.02 8.95C58.02 9.13 57.92 9.23 57.74 9.23L55.69 9.23C55.51 9.23 55.41 9.13 55.41 8.95L55.41 8.37C55.41 8.19 55.51 8.09 55.69 8.09L57.74 8.09C57.92 8.09 58.02 8.19 58.02 8.37ZM60.07 14.06L60.07 11.76L55.83 11.76C55.55 11.76 55.41 11.62 55.41 11.34L55.41 10.72C55.54 10.79 55.69 10.82 55.85 10.82L58.63 10.82C59.82 10.82 60.42 10.19 60.42 8.92L60.42 7.71C60.42 6.47 59.82 5.84 58.63 5.84L54.88 5.84C53.62 5.84 52.99 6.48 52.99 7.77L52.99 12.12C52.99 13.41 53.65 14.06 54.95 14.06Z"/></g></svg>` }} style={{ display: "flex", alignItems: "center" }} />
+              <Badge color={{C.accent}}>Beta</Badge>
             </div>
 
             {/* Tabs */}
@@ -1020,7 +1009,7 @@ export default function BoQmate() {
             </div>
 
             {/* CTA */}
-            <Btn onClick={() => {}} size="sm" style={{ background: `linear-gradient(135deg, ${C.gold}, ${C.goldDark})` }}>
+            <Btn onClick={() => {}} size="sm">
               ⭐ ترقية Pro
             </Btn>
           </div>
@@ -1028,8 +1017,8 @@ export default function BoQmate() {
 
         {/* Content */}
         <main style={{ maxWidth: 1100, margin: "0 auto", padding: "36px 32px" }}>
-          {tab === "upload" && <UploadTab onAnalysisComplete={setAnalysisResults} />}
-          {tab === "prices" && <PriceManagementTab />}
+          {tab === "upload" && <UploadTab onAnalysisComplete={setAnalysisResults} globalDB={globalDB} />}
+          {tab === "prices" && <PriceManagementTab globalDB={globalDB} dbLoading={dbLoading} />}
           {tab === "reports" && <ReportsTab analysisResults={analysisResults} />}
           {tab === "settings" && <SettingsTab />}
         </main>
