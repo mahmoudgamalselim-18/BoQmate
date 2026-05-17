@@ -3,6 +3,7 @@
 // نفس الفكرة — max_tokens أكبر لأن الشيت ممكن يكون كبير
 
 export async function POST(request) {
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   
   if (!apiKey) {
     return Response.json(
