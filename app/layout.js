@@ -1,6 +1,6 @@
 export const metadata = {
-  title: "BoQmate — منصة تسعير ذكية",
-  description: "منصة تسعير مقايسات الإنشاء للسوق المصري والخليجي",
+  title: "BOQmate — AI-Powered Construction Pricing",
+  description: "AI-Powered Construction Pricing",
 };
 
 export default function RootLayout({ children }) {
