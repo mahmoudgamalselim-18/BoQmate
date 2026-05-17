@@ -173,7 +173,7 @@ const PaywallModal = ({ open, onClose, type }) => (
     <div style={{ textAlign: "center" }}>
       <div style={{ fontSize: 56, marginBottom: 16 }}>{type === "export" ? "🚀" : "⭐"}</div>
       <div style={{ background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", fontSize: 22, fontWeight: 900, marginBottom: 10 }}>
-        {type === "export" ? "لحظة الانبهار وصلت!" : "BoQmate Pro"}
+        {type === "export" ? "قم بترقية حسابك الان" : "BOQmate Pro"}
       </div>
       {type === "export" ? (
         <>
