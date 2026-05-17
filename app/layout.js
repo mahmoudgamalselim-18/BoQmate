@@ -1,5 +1,5 @@
 export const metadata = {
-  title: "BOQmate AI-Powered Construction Pricing",
+  title: "BOQmate  AI-Powered Construction Pricing",
   description: "AI-Powered Construction Pricing",
 };
 
