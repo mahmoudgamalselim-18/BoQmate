@@ -173,7 +173,7 @@ const PaywallModal = ({ open, onClose, type }) => (
     <div style={{ textAlign: "center" }}>
       <div style={{ fontSize: 56, marginBottom: 16 }}>{type === "export" ? "🚀" : "⭐"}</div>
       <div style={{ background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", fontSize: 22, fontWeight: 900, marginBottom: 10 }}>
-        {type === "export" ? "قم بترقية حسابك الان" : "BOQmate Pro"}
+        {type === "export" ? "لحظة الانبهار وصلت!" : "BoQmate Pro"}
       </div>
       {type === "export" ? (
         <>
@@ -825,13 +825,13 @@ const ReportsTab = ({ analysisResults }) => {
 // ============================================================
 // TAB: SETTINGS
 // ============================================================
-const SettingsTab = () => {
+const SettingsTab = ({ isPro = false }) => {
   const [paywallOpen, setPaywallOpen] = useState(false);
   // Pro additions management (read/write via LS for demo)
   const [additions, setAdditions] = useState(() => LS.get("boqmate_additions", FREE_ADDITIONS));
   const [newLabel, setNewLabel] = useState("");
   const [newPct, setNewPct] = useState("");
-  const isPro = false; // toggle this to true to demo Pro mode
+  // isPro comes from parent via prop
 
   const saveAdditions = (list) => { setAdditions(list); LS.set("boqmate_additions", list); };
   const handleAddRow = () => {
@@ -957,19 +957,24 @@ export default function BoQmate() {
   const [analysisResults, setAnalysisResults] = useState([]);
   const [globalDB, setGlobalDB] = useState([]);
   const [dbLoading, setDbLoading] = useState(true);
+  const [isPro, setIsPro] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
 
-  // سحب أسعار السوق من Supabase عند بداية التطبيق
   useEffect(() => {
+    // سحب أسعار السوق
     fetch("/api/prices")
       .then(r => r.json())
       .then(data => {
-        if (Array.isArray(data)) {
-          setGlobalDB(data);
-          GLOBAL_DB = data; // sync global var for AI functions
-        }
+        if (Array.isArray(data)) { setGlobalDB(data); GLOBAL_DB = data; }
       })
       .catch(e => console.error("فشل تحميل الأسعار:", e))
       .finally(() => setDbLoading(false));
+
+    // التحقق من Pro status
+    fetch("/api/pro-status")
+      .then(r => r.json())
+      .then(data => { setIsPro(data.isPro || false); setUserEmail(data.email || ""); })
+      .catch(() => {});
   }, []);
 
   const tabs = [
@@ -1009,9 +1014,21 @@ export default function BoQmate() {
             </div>
 
             {/* CTA */}
-            <Btn onClick={() => {}} size="sm">
-              ⭐ ترقية Pro
-            </Btn>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              {isPro ? (
+                <span style={{ background: `${C.gold}20`, color: C.gold, border: `1px solid ${C.gold}40`, borderRadius: 20, padding: "4px 12px", fontSize: 12, fontWeight: 700 }}>
+                  ⭐ Pro
+                </span>
+              ) : (
+                <Btn onClick={() => {}} size="sm">⭐ ترقية Pro</Btn>
+              )}
+              {userEmail && (
+                <button onClick={() => { document.cookie = "sb-access-token=; Max-Age=0; path=/"; document.cookie = "sb-refresh-token=; Max-Age=0; path=/"; window.location.href = "/login"; }}
+                  style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontFamily: "'Cairo', sans-serif" }}>
+                  خروج
+                </button>
+              )}
+            </div>
           </div>
         </nav>
 
@@ -1020,13 +1037,13 @@ export default function BoQmate() {
           {tab === "upload" && <UploadTab onAnalysisComplete={setAnalysisResults} globalDB={globalDB} />}
           {tab === "prices" && <PriceManagementTab globalDB={globalDB} dbLoading={dbLoading} />}
           {tab === "reports" && <ReportsTab analysisResults={analysisResults} />}
-          {tab === "settings" && <SettingsTab />}
+          {tab === "settings" && <SettingsTab isPro={isPro} />}
         </main>
 
         {/* Footer */}
         <footer style={{ borderTop: `1px solid ${C.border}`, padding: "20px 32px", textAlign: "center" }}>
           <span style={{ color: C.textDim, fontSize: 13 }}>
-            BoQmate © 2025 — منصة تسعير المقايسات الأولى من نوعها فى الشرق الأوسط •{" "}
+            BoQmate © 2025 — منصة تسعير ذكية للسوق المصري والخليجي •{" "}
             <span style={{ color: C.gold }}>النسخة المجانية</span>
           </span>
         </footer>
