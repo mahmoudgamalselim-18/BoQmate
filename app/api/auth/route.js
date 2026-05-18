@@ -1,92 +1,51 @@
-// app/api/auth/route.js
-// ─── Supabase Authentication Handler ────────────────────────
+// app/api/pro-status/route.js
 
-export async function POST(request) {
+export async function GET(request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  let body;
-  try { body = await request.json(); } catch {
-    return Response.json({ error: "طلب غير صحيح" }, { status: 400 });
-  }
+  // حاول تجيب الـ token من أي cookie ممكن
+  const accessToken =
+    request.cookies.get("sb-access-token")?.value ||
+    request.cookies.get("supabase-auth-token")?.value;
 
-  const { mode, email, password, name } = body;
-
-  if (!email || !password) {
-    return Response.json({ error: "الإيميل وكلمة المرور مطلوبان" }, { status: 400 });
+  if (!accessToken) {
+    return Response.json({ isPro: false, email: null, reason: "no token" });
   }
 
   try {
-    if (mode === "register") {
-      // ── تسجيل مستخدم جديد ──
-      const res = await fetch(`${supabaseUrl}/auth/v1/signup`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: supabaseAnonKey,
-        },
-        body: JSON.stringify({
-          email,
-          password,
-          data: { full_name: name || "" },
-        }),
-      });
+    // اجيب بيانات المستخدم
+    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
 
-      const data = await res.json();
+    const userData = await userRes.json();
+    const email = userData?.email;
 
-      if (data.error || data.msg) {
-        const msg = data.error?.message || data.msg || "خطأ في التسجيل";
-        // Translate common errors to Arabic
-        const arabicErrors = {
-          "User already registered": "الإيميل مسجل بالفعل — جرب تسجيل الدخول",
-          "Password should be at least 6 characters": "كلمة المرور 6 أحرف على الأقل",
-          "Unable to validate email address: invalid format": "صيغة الإيميل غير صحيحة",
-        };
-        return Response.json({ error: arabicErrors[msg] || msg });
-      }
-
-      return Response.json({ success: true, message: "تم التسجيل — تحقق من إيميلك" });
-
-    } else {
-      // ── تسجيل الدخول ──
-      const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: supabaseAnonKey,
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-
-      if (data.error || data.error_description) {
-        const msg = data.error_description || data.error || "بيانات غير صحيحة";
-        const arabicErrors = {
-          "Invalid login credentials": "الإيميل أو كلمة المرور غير صحيحة",
-          "Email not confirmed": "يرجى تأكيد إيميلك أولاً",
-          "Too many requests": "محاولات كثيرة — انتظر قليلاً",
-        };
-        return Response.json({ error: arabicErrors[msg] || msg });
-      }
-
-      // Return tokens to set in cookies
-      return Response.json({
-        success: true,
-        access_token: data.access_token,
-        refresh_token: data.refresh_token,
-        user: data.user,
-      }, {
-        headers: {
-          // Set session cookie
-          "Set-Cookie": [
-            `sb-access-token=${data.access_token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`,
-            `sb-refresh-token=${data.refresh_token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800`,
-          ].join(", "),
-        },
-      });
+    if (!email) {
+      return Response.json({ isPro: false, email: null, reason: "no email" });
     }
+
+    // تحقق من جدول pro_users
+    const proRes = await fetch(
+      `${supabaseUrl}/rest/v1/pro_users?email=eq.${encodeURIComponent(email)}&select=email`,
+      {
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+      }
+    );
+
+    const proData = await proRes.json();
+    const isPro = Array.isArray(proData) && proData.length > 0;
+
+    return Response.json({ isPro, email });
   } catch (err) {
-    return Response.json({ error: `خطأ في الاتصال: ${err.message}` }, { status: 502 });
+    return Response.json({ isPro: false, email: null, error: err.message });
   }
 }
