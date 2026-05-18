@@ -729,13 +729,28 @@ const FREE_ADDITIONS = [
 
 const ReportsTab = ({ analysisResults, isPro = false }) => {
   const [paywallOpen, setPaywallOpen] = useState(false);
-  // additions = FREE_ADDITIONS for free plan (read from LS to reflect Settings page)
-  const additions = LS.get("boqmate_additions", FREE_ADDITIONS);
+  // طريقة تطبيق الإضافات: "total" = على الإجمالي | "each" = على كل بند
+  const [additionsMode, setAdditionsMode] = useState("total");
+  // هل تظهر ضريبة القيمة المضافة
+  const [showVat, setShowVat] = useState(true);
 
+  const additions = LS.get("boqmate_additions", FREE_ADDITIONS);
   const successItems = analysisResults.filter(i => i.status === "success");
+
+  // حساب التكلفة حسب الـ mode
+  const calcItemTotal = (baseCost) => {
+    if (additionsMode === "each") {
+      const addAmt = additions.reduce((s, a) => s + baseCost * (a.pct / 100), 0);
+      const vatAmt = showVat ? (baseCost + addAmt) * 0.14 : 0;
+      return baseCost + addAmt + vatAmt;
+    }
+    return baseCost;
+  };
+
   const subtotal = successItems.reduce((s, i) => s + (i.totalCost || 0), 0);
-  const additionsTotal = additions.reduce((s, a) => s + subtotal * (a.pct / 100), 0);
-  const vat = (subtotal + additionsTotal) * 0.14;
+  const additionsTotal = additionsMode === "total" ? additions.reduce((s, a) => s + subtotal * (a.pct / 100), 0) : 0;
+  const vatBase = additionsMode === "total" ? subtotal + additionsTotal : subtotal + additions.reduce((s,a)=>s+subtotal*(a.pct/100),0);
+  const vat = showVat ? vatBase * 0.14 : 0;
   const total = subtotal + additionsTotal + vat;
 
   if (successItems.length === 0) return (
@@ -748,71 +763,127 @@ const ReportsTab = ({ analysisResults, isPro = false }) => {
 
   return (
     <div className="fade-in">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 28 }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: C.text }}>التقرير النهائي</h2>
           <p style={{ color: C.textMuted, fontSize: 13, marginTop: 4 }}>ملخص التكاليف مع الهوامش والضرائب</p>
         </div>
-        <Btn variant="accent" size="lg" onClick={() => setPaywallOpen(true)}>
+        <Btn variant="accent" size="lg" onClick={() => isPro ? alert("قريباً — ميزة التصدير قيد التطوير") : setPaywallOpen(true)}>
           📥 تصدير Excel / PDF
         </Btn>
       </div>
 
+      {/* خيارات التقرير */}
+      <div style={{ background: C.navyCard, borderRadius: 12, border: `1px solid ${C.border}`, padding: "16px 20px", marginBottom: 20, display: "flex", flexWrap: "wrap", gap: 20, alignItems: "center" }}>
+        <span style={{ color: C.textMuted, fontSize: 13, fontWeight: 600 }}>⚙️ إعدادات التقرير:</span>
+
+        {/* طريقة الإضافات */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ color: C.textMuted, fontSize: 13 }}>الهوامش والمصاريف:</span>
+          <div style={{ display: "flex", background: C.navyMid, borderRadius: 8, padding: 3, border: `1px solid ${C.border}`, gap: 2 }}>
+            {[{ k: "total", label: "على الإجمالي" }, { k: "each", label: "على كل بند" }].map(opt => (
+              <button key={opt.k} onClick={() => setAdditionsMode(opt.k)}
+                style={{ padding: "5px 12px", border: "none", borderRadius: 6, fontFamily: "'Cairo',sans-serif", fontSize: 12, fontWeight: 600, cursor: "pointer", background: additionsMode === opt.k ? C.gold : "transparent", color: additionsMode === opt.k ? C.navy : C.textMuted, transition: "all 0.15s" }}>
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ضريبة القيمة المضافة */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ color: C.textMuted, fontSize: 13 }}>ضريبة القيمة المضافة (14%):</span>
+          <button onClick={() => setShowVat(!showVat)}
+            style={{ padding: "5px 14px", border: `1px solid ${showVat ? C.gold : C.border}`, borderRadius: 6, fontFamily: "'Cairo',sans-serif", fontSize: 12, fontWeight: 600, cursor: "pointer", background: showVat ? `${C.gold}20` : "transparent", color: showVat ? C.gold : C.textMuted, transition: "all 0.15s" }}>
+            {showVat ? "✓ مُضافة" : "✗ محذوفة"}
+          </button>
+        </div>
+      </div>
+
       {/* Summary Cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 28 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 24 }}>
         {[
-          { label: "عدد البنود", value: successItems.length, unit: "بند", color: C.accent },
+          { label: "عدد البنود", value: successItems.length + " بند", color: C.accent },
           { label: "تكلفة مباشرة", value: formatEGP(subtotal), color: C.text },
-          { label: "إجمالي شامل", value: formatEGP(total), color: C.gold, big: true },
+          { label: showVat ? "إجمالي شامل الضريبة" : "إجمالي بدون ضريبة", value: formatEGP(total), color: C.gold, big: true },
         ].map((c, i) => (
-          <div key={i} style={{ background: c.big ? `linear-gradient(135deg, ${C.gold}20, ${C.goldDark}10)` : C.navyCard, border: `1px solid ${c.big ? C.gold + "60" : C.border}`, borderRadius: 14, padding: "20px 24px" }}>
-            <div style={{ color: C.textMuted, fontSize: 13, marginBottom: 8 }}>{c.label}</div>
-            <div style={{ color: c.color, fontSize: c.big ? 24 : 20, fontWeight: 900 }}>{c.value}</div>
-            {c.unit && <div style={{ color: C.textMuted, fontSize: 12 }}>{c.unit}</div>}
+          <div key={i} style={{ background: c.big ? `linear-gradient(135deg, ${C.gold}20, ${C.goldDark}10)` : C.navyCard, border: `1px solid ${c.big ? C.gold + "60" : C.border}`, borderRadius: 14, padding: "18px 22px" }}>
+            <div style={{ color: C.textMuted, fontSize: 12, marginBottom: 8 }}>{c.label}</div>
+            <div style={{ color: c.color, fontSize: c.big ? 22 : 18, fontWeight: 900 }}>{c.value}</div>
           </div>
         ))}
       </div>
 
-      {/* Items Breakdown */}
-      <div style={{ background: C.navyCard, borderRadius: 14, border: `1px solid ${C.border}`, marginBottom: 24, overflow: "hidden" }}>
-        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${C.border}`, background: C.navyMid }}>
+      {/* جدول البنود */}
+      <div style={{ background: C.navyCard, borderRadius: 14, border: `1px solid ${C.border}`, marginBottom: 20, overflow: "hidden" }}>
+        <div style={{ padding: "14px 20px", borderBottom: `1px solid ${C.border}`, background: C.navyMid, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ color: C.text, fontWeight: 700, fontSize: 15 }}>تفاصيل البنود</span>
+          {additionsMode === "each" && (
+            <span style={{ color: C.accent, fontSize: 12, background: `${C.accent}15`, border: `1px solid ${C.accent}30`, borderRadius: 20, padding: "2px 10px" }}>
+              الأسعار تشمل الهوامش{showVat ? " والضريبة" : ""}
+            </span>
+          )}
+        </div>
+        {/* Header row */}
+        <div style={{ display: "grid", gridTemplateColumns: "3fr 1fr 1fr 1fr", padding: "10px 20px", background: C.navyMid, borderBottom: `1px solid ${C.border}` }}>
+          {["البند", "الكمية", "الوحدة", "التكلفة"].map((h, i) => (
+            <span key={i} style={{ fontSize: 11, fontWeight: 700, color: C.textDim, letterSpacing: "0.5px" }}>{h}</span>
+          ))}
         </div>
         {successItems.map((item, i) => (
-          <div key={item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 20px", borderBottom: i < successItems.length - 1 ? `1px solid ${C.border}` : "none" }}>
-            <div>
-              <div style={{ color: C.text, fontWeight: 600, fontSize: 14 }}>{item.itemName || item.raw}</div>
-              <div style={{ color: C.textMuted, fontSize: 12, marginTop: 2 }}>{item.quantity} {item.unit}</div>
+          <div key={item.id} style={{ display: "grid", gridTemplateColumns: "3fr 1fr 1fr 1fr", padding: "12px 20px", borderBottom: i < successItems.length - 1 ? `1px solid ${C.border}` : "none", alignItems: "center" }}
+            onMouseEnter={e => e.currentTarget.style.background = C.navyLight}
+            onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+            <div style={{ color: C.text, fontWeight: 600, fontSize: 13, paddingLeft: 8 }}>{item.itemName || item.raw}</div>
+            <div style={{ color: C.textMuted, fontSize: 13 }}>{item.quantity}</div>
+            <div style={{ color: C.textMuted, fontSize: 13 }}>{item.unit}</div>
+            <div style={{ color: C.gold, fontWeight: 700, fontSize: 13 }}>
+              {formatEGP(additionsMode === "each" ? calcItemTotal(item.totalCost) : item.totalCost)}
             </div>
-            <div style={{ color: C.gold, fontWeight: 700, fontSize: 15 }}>{formatEGP(item.totalCost)}</div>
           </div>
         ))}
       </div>
 
-      {/* Cost Summary */}
+      {/* ملخص التكلفة */}
       <div style={{ background: C.navyCard, borderRadius: 14, border: `1px solid ${C.border}`, padding: 24 }}>
-        <h3 style={{ color: C.text, fontWeight: 700, marginBottom: 20, fontSize: 16 }}>ملخص التكلفة الإجمالية</h3>
-        {/* Direct cost row */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: `1px solid ${C.border}` }}>
+        <h3 style={{ color: C.text, fontWeight: 700, marginBottom: 18, fontSize: 15 }}>ملخص التكلفة الإجمالية</h3>
+
+        {/* التكلفة المباشرة */}
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "11px 0", borderBottom: `1px solid ${C.border}` }}>
           <span style={{ color: C.text, fontSize: 14 }}>التكلفة المباشرة (خامات + مصنعيات)</span>
           <span style={{ color: C.text, fontSize: 14, fontWeight: 600 }}>{formatEGP(subtotal)}</span>
         </div>
-        {/* Dynamic additions rows */}
-        {additions.map((row, i) => (
-          <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: `1px solid ${C.border}` }}>
-            <span style={{ color: C.textMuted, fontSize: 14, display: "flex", alignItems: "center", gap: 8 }}>
-              {row.label} ({row.pct}%) <span style={{ fontSize: 16 }}>🔒</span>
+
+        {/* الإضافات — تظهر فقط لو الـ mode = total */}
+        {additionsMode === "total" && additions.map((row, i) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "11px 0", borderBottom: `1px solid ${C.border}` }}>
+            <span style={{ color: C.textMuted, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
+              {row.label} ({row.pct}%) {!isPro && <span>🔒</span>}
             </span>
             <span style={{ color: C.textMuted, fontSize: 14, fontWeight: 600 }}>{formatEGP(subtotal * (row.pct / 100))}</span>
           </div>
         ))}
-        {/* VAT */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: `1px solid ${C.border}` }}>
-          <span style={{ color: C.text, fontSize: 14 }}>ضريبة القيمة المضافة (14%)</span>
-          <span style={{ color: C.text, fontSize: 14, fontWeight: 600 }}>{formatEGP(vat)}</span>
-        </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 0 0" }}>
-          <span style={{ color: C.gold, fontSize: 18, fontWeight: 800 }}>الإجمالي الكلي شامل الضرائب</span>
+
+        {additionsMode === "each" && (
+          <div style={{ padding: "11px 0", borderBottom: `1px solid ${C.border}` }}>
+            <span style={{ color: `${C.accent}`, fontSize: 13 }}>✓ الهوامش والمصاريف مضافة على كل بند بشكل مستقل</span>
+          </div>
+        )}
+
+        {/* الضريبة */}
+        {showVat && additionsMode === "total" && (
+          <div style={{ display: "flex", justifyContent: "space-between", padding: "11px 0", borderBottom: `1px solid ${C.border}` }}>
+            <span style={{ color: C.text, fontSize: 14 }}>ضريبة القيمة المضافة (14%)</span>
+            <span style={{ color: C.text, fontSize: 14, fontWeight: 600 }}>{formatEGP(vat)}</span>
+          </div>
+        )}
+
+        {/* الإجمالي */}
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "16px 0 4px" }}>
+          <span style={{ color: C.gold, fontSize: 17, fontWeight: 800 }}>
+            {showVat ? "الإجمالي الكلي شامل الضرائب" : "الإجمالي الكلي بدون ضريبة"}
+          </span>
           <span style={{ color: C.gold, fontSize: 22, fontWeight: 900 }}>{formatEGP(total)}</span>
         </div>
       </div>
