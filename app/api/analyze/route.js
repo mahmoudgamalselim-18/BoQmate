@@ -22,12 +22,6 @@ export async function POST(request) {
   }
 
   try {
-    // نضيف assistant prefill بـ { عشان نجبر الـ Claude يبدأ بـ JSON مباشرة
-    const messagesWithPrefill = [
-      ...messages,
-      { role: "assistant", content: "{" }
-    ];
-
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -38,8 +32,14 @@ export async function POST(request) {
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
         max_tokens,
-        system: "أنت API متخصص في تحليل بنود مقايسات الإنشاءات. أرجع JSON فقط بدون أي نص إضافي. لا تكتب أي شرح أو مقدمة. الرد يبدأ بـ { مباشرة.",
-        messages: messagesWithPrefill,
+        system: `أنت API متخصص في تحليل بنود مقايسات الإنشاءات المصرية.
+قواعد صارمة يجب اتباعها:
+1. أرجع JSON فقط — لا تكتب أي نص قبل أو بعده
+2. لا تستخدم markdown أو backticks أو أي تنسيق
+3. ابدأ ردك بـ { مباشرة وانته بـ }
+4. إذا كان البند معقداً، حلله إلى أبسط مكوناته وأرجع JSON صحيح
+5. لا تعتذر ولا تشرح — فقط JSON`,
+        messages,
       }),
     });
 
@@ -52,9 +52,13 @@ export async function POST(request) {
       );
     }
 
-    // الرد جاء بعد الـ prefill { — نضيف { في الأول عشان يكون JSON كامل
+    // استخرج الـ JSON من الرد حتى لو فيه نص إضافي
     if (data.content?.[0]?.text) {
-      data.content[0].text = "{" + data.content[0].text;
+      const text = data.content[0].text;
+      const match = text.match(/\{[\s\S]*\}/);
+      if (match) {
+        data.content[0].text = match[0];
+      }
     }
 
     return Response.json(data);
