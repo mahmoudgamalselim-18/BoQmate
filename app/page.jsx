@@ -401,7 +401,7 @@ const SHEET_PARSER_PROMPT = `أنت محلل مقايسات محترف. سيتم
 // ============================================================
 // TAB: UPLOAD & ANALYZE BoQ
 // ============================================================
-const UploadTab = ({ onAnalysisComplete, globalDB = [] }) => {
+const UploadTab = ({ onAnalysisComplete, globalDB = [], isPro = false }) => {
   const [inputMode, setInputMode] = useState("excel"); // "excel" | "text"
   const [boqText, setBoqText] = useState("");
   const [excelFile, setExcelFile] = useState(null);
@@ -550,7 +550,7 @@ const UploadTab = ({ onAnalysisComplete, globalDB = [] }) => {
           <h2 style={{ fontSize: 22, fontWeight: 800, color: C.text }}>رفع وتحليل المقايسة</h2>
           <p style={{ color: C.textMuted, fontSize: 13, marginTop: 4 }}>ارفع ملف Excel أياً كان شكله — الذكاء الاصطناعي يقرأه ويسعّره تلقائياً</p>
         </div>
-        <Badge color={C.accent}>نسخة مجانية</Badge>
+        {!isPro && <Badge color={C.accent}>نسخة مجانية</Badge>}
       </div>
 
       {/* Mode Toggle */}
@@ -727,7 +727,7 @@ const FREE_ADDITIONS = [
   { label: "المصاريف الإدارية", pct: 5 },
 ];
 
-const ReportsTab = ({ analysisResults }) => {
+const ReportsTab = ({ analysisResults, isPro = false }) => {
   const [paywallOpen, setPaywallOpen] = useState(false);
   // additions = FREE_ADDITIONS for free plan (read from LS to reflect Settings page)
   const additions = LS.get("boqmate_additions", FREE_ADDITIONS);
@@ -1034,9 +1034,9 @@ export default function BoQmate() {
 
         {/* Content */}
         <main style={{ maxWidth: 1100, margin: "0 auto", padding: "36px 32px" }}>
-          {tab === "upload" && <UploadTab onAnalysisComplete={setAnalysisResults} globalDB={globalDB} />}
+          {tab === "upload" && <UploadTab onAnalysisComplete={setAnalysisResults} globalDB={globalDB} isPro={isPro} />}
           {tab === "prices" && <PriceManagementTab globalDB={globalDB} dbLoading={dbLoading} />}
-          {tab === "reports" && <ReportsTab analysisResults={analysisResults} />}
+          {tab === "reports" && <ReportsTab analysisResults={analysisResults} isPro={isPro} />}
           {tab === "settings" && <SettingsTab isPro={isPro} />}
         </main>
 
@@ -1044,7 +1044,7 @@ export default function BoQmate() {
         <footer style={{ borderTop: `1px solid ${C.border}`, padding: "20px 32px", textAlign: "center" }}>
           <span style={{ color: C.textDim, fontSize: 13 }}>
             BoQmate © 2025 — منصة تسعير ذكية للسوق المصري والخليجي •{" "}
-            <span style={{ color: C.gold }}>النسخة المجانية</span>
+            <span style={{ color: C.gold }}>{isPro ? "النسخة Pro ⭐" : "النسخة المجانية"}</span>
           </span>
         </footer>
       </div>
