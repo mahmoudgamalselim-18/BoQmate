@@ -405,8 +405,8 @@ const UploadTab = ({ onAnalysisComplete, globalDB = [], isPro = false }) => {
   const [inputMode, setInputMode] = useState("excel"); // "excel" | "text"
   const [boqText, setBoqText] = useState("");
   const [excelFile, setExcelFile] = useState(null);
-  const [extractedItems, setExtractedItems] = useState([]); // parsed from Excel by AI
-  const [items, setItems] = useState([]);
+  const [extractedItems, setExtractedItems] = useState([]);
+  const [items, setItems] = useState(() => LS.get("boqmate_results", []));
   const [loading, setLoading] = useState(false);
   const [stage, setStage] = useState(""); // "reading" | "extracting" | "pricing"
   const [error, setError] = useState("");
@@ -653,9 +653,15 @@ const UploadTab = ({ onAnalysisComplete, globalDB = [], isPro = false }) => {
       {/* Results */}
       {items.length > 0 && (
         <div style={{ marginTop: 32 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: C.text }}>نتائج التحليل ({items.length} بند)</h3>
-            {loading && <div className="spin" style={{ width: 16, height: 16, border: `2px solid ${C.border}`, borderTop: `2px solid ${C.gold}`, borderRadius: "50%" }} />}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: C.text }}>نتائج التحليل ({items.length} بند)</h3>
+              {loading && <div className="spin" style={{ width: 16, height: 16, border: `2px solid ${C.border}`, borderTop: `2px solid ${C.gold}`, borderRadius: "50%" }} />}
+            </div>
+            <button onClick={() => { setItems([]); setExtractedItems([]); LS.set("boqmate_results", []); onAnalysisComplete([]); }}
+              style={{ background: `${C.danger}15`, border: `1px solid ${C.danger}30`, color: C.danger, borderRadius: 8, padding: "6px 14px", cursor: "pointer", fontSize: 13, fontFamily: "'Cairo',sans-serif", fontWeight: 600 }}>
+              🗑️ مسح النتائج
+            </button>
           </div>
           {items.map(item => <ItemCard key={item.id} item={item} />)}
         </div>
@@ -726,6 +732,104 @@ const FREE_ADDITIONS = [
   { label: "هامش الربح", pct: 15 },
   { label: "المصاريف الإدارية", pct: 5 },
 ];
+
+
+// ============================================================
+// SAVE BOQMATE MODAL
+// ============================================================
+const SaveModal = ({ open, onClose, onSave, itemCount, total }) => {
+  const [name, setName] = useState("");
+  if (!open) return null;
+  return (
+    <Modal open={open} onClose={onClose} width={420}>
+      <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <div style={{ fontSize: 44, marginBottom: 10 }}>💾</div>
+        <h3 style={{ color: C.text, fontSize: 18, fontWeight: 800, marginBottom: 6 }}>حفظ المقايسة</h3>
+        <p style={{ color: C.textMuted, fontSize: 13 }}>{itemCount} بند • إجمالي {total}</p>
+      </div>
+      <div style={{ marginBottom: 20 }}>
+        <label style={{ fontSize: 13, color: C.textMuted, marginBottom: 8, display: "block", fontWeight: 600 }}>اسم المشروع</label>
+        <input value={name} onChange={e => setName(e.target.value)}
+          placeholder="مثال: فيلا الشيخ زايد - أعمال التشطيب"
+          onKeyDown={e => e.key === "Enter" && name.trim() && onSave(name.trim())}
+          autoFocus
+          style={{ width: "100%", background: C.navyLight, border: `1px solid ${C.borderLight}`, borderRadius: 10, padding: "12px 16px", color: C.text, fontSize: 14, fontFamily: "'Cairo',sans-serif", outline: "none", boxSizing: "border-box" }} />
+      </div>
+      <div style={{ display: "flex", gap: 10 }}>
+        <Btn onClick={() => name.trim() && onSave(name.trim())} disabled={!name.trim()}>💾 حفظ</Btn>
+        <Btn variant="ghost" onClick={onClose}>تخطي</Btn>
+      </div>
+    </Modal>
+  );
+};
+
+// ============================================================
+// MY PROJECTS TAB
+// ============================================================
+const ProjectsTab = ({ isPro, onLoad }) => {
+  const [projects, setProjects] = useState(() => LS.get("boqmate_projects", []));
+  const [paywallOpen, setPaywallOpen] = useState(false);
+
+  const deleteProject = (id) => {
+    const updated = projects.filter(p => p.id !== id);
+    setProjects(updated);
+    LS.set("boqmate_projects", updated);
+  };
+
+  return (
+    <div className="fade-in">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+        <div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: C.text }}>مقايساتي</h2>
+          <p style={{ color: C.textMuted, fontSize: 13, marginTop: 4 }}>
+            {isPro ? "غير محدود" : `${projects.length} / 3 مقايسات`} محفوظة
+          </p>
+        </div>
+        {!isPro && (
+          <div style={{ background: `${C.gold}15`, border: `1px solid ${C.gold}30`, borderRadius: 10, padding: "8px 16px", fontSize: 13, color: C.gold }}>
+            🔒 Pro = حفظ غير محدود
+          </div>
+        )}
+      </div>
+
+      {projects.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "60px 20px", background: C.navyCard, borderRadius: 14, border: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: 52, marginBottom: 16 }}>📁</div>
+          <div style={{ color: C.text, fontWeight: 700, fontSize: 16, marginBottom: 8 }}>لا توجد مقايسات محفوظة</div>
+          <div style={{ color: C.textMuted, fontSize: 13 }}>بعد تحليل مقايسة، اضغط "حفظ" لإضافتها هنا</div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {projects.map((p, i) => (
+            <div key={p.id} style={{ background: C.navyCard, border: `1px solid ${C.border}`, borderRadius: 12, padding: "18px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "border-color 0.15s" }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = C.gold + "60"}
+              onMouseLeave={e => e.currentTarget.style.borderColor = C.border}>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: C.text, fontWeight: 700, fontSize: 15, marginBottom: 6 }}>{p.name}</div>
+                <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                  <span style={{ color: C.textMuted, fontSize: 12 }}>📅 {new Date(p.date).toLocaleDateString("ar-EG")}</span>
+                  <span style={{ color: C.textMuted, fontSize: 12 }}>📋 {p.itemCount} بند</span>
+                  <span style={{ color: C.gold, fontSize: 12, fontWeight: 700 }}>💰 {formatEGP(p.total)}</span>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, marginRight: 16 }}>
+                <button onClick={() => onLoad(p)}
+                  style={{ background: `${C.gold}20`, border: `1px solid ${C.gold}40`, color: C.gold, borderRadius: 8, padding: "7px 16px", cursor: "pointer", fontSize: 13, fontFamily: "'Cairo',sans-serif", fontWeight: 600 }}>
+                  📂 فتح
+                </button>
+                <button onClick={() => deleteProject(p.id)}
+                  style={{ background: `${C.danger}15`, border: `1px solid ${C.danger}30`, color: C.danger, borderRadius: 8, padding: "7px 12px", cursor: "pointer", fontSize: 13, fontFamily: "'Cairo',sans-serif" }}>
+                  🗑️
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} type="export" />
+    </div>
+  );
+};
 
 const ReportsTab = ({ analysisResults, isPro = false }) => {
   const [paywallOpen, setPaywallOpen] = useState(false);
@@ -1025,7 +1129,9 @@ const SettingsTab = ({ isPro = false }) => {
 // ============================================================
 export default function BoQmate() {
   const [tab, setTab] = useState("upload");
-  const [analysisResults, setAnalysisResults] = useState([]);
+  const [analysisResults, setAnalysisResults] = useState(() => LS.get("boqmate_results", []));
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [pendingResults, setPendingResults] = useState([]);
   const [globalDB, setGlobalDB] = useState([]);
   const [dbLoading, setDbLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);
@@ -1050,6 +1156,7 @@ export default function BoQmate() {
 
   const tabs = [
     { id: "upload", label: "رفع المقايسة", icon: "📋" },
+    { id: "projects", label: "مقايساتي", icon: "📁" },
     { id: "prices", label: "إدارة الأسعار", icon: "💰" },
     { id: "reports", label: "التقارير", icon: "📊" },
     { id: "settings", label: "الإعدادات", icon: "⚙️" },
@@ -1105,11 +1212,45 @@ export default function BoQmate() {
 
         {/* Content */}
         <main style={{ maxWidth: 1100, margin: "0 auto", padding: "36px 32px" }}>
-          {tab === "upload" && <UploadTab onAnalysisComplete={setAnalysisResults} globalDB={globalDB} isPro={isPro} />}
+          {tab === "upload" && <UploadTab onAnalysisComplete={(results) => {
+              setAnalysisResults(results);
+              LS.set("boqmate_results", results);
+              setPendingResults(results);
+              setSaveModalOpen(true);
+            }} globalDB={globalDB} isPro={isPro} />}
           {tab === "prices" && <PriceManagementTab globalDB={globalDB} dbLoading={dbLoading} />}
+          {tab === "projects" && <ProjectsTab isPro={isPro} onLoad={(p) => { setAnalysisResults(p.results); LS.set("boqmate_results", p.results); setTab("reports"); }} />}
           {tab === "reports" && <ReportsTab analysisResults={analysisResults} isPro={isPro} />}
           {tab === "settings" && <SettingsTab isPro={isPro} />}
         </main>
+
+        {/* Save Modal */}
+        <SaveModal
+          open={saveModalOpen}
+          onClose={() => setSaveModalOpen(false)}
+          itemCount={pendingResults.filter(r => r.status === "success").length}
+          total={formatEGP(pendingResults.filter(r => r.status === "success").reduce((s, i) => s + (i.totalCost || 0), 0))}
+          onSave={(name) => {
+            const projects = LS.get("boqmate_projects", []);
+            const limit = isPro ? Infinity : 3;
+            if (projects.length >= limit) {
+              setSaveModalOpen(false);
+              return;
+            }
+            const newProject = {
+              id: `proj_${Date.now()}`,
+              name,
+              date: new Date().toISOString(),
+              itemCount: pendingResults.filter(r => r.status === "success").length,
+              total: pendingResults.filter(r => r.status === "success").reduce((s, i) => s + (i.totalCost || 0), 0),
+              results: pendingResults,
+            };
+            const updated = [newProject, ...projects].slice(0, limit);
+            LS.set("boqmate_projects", updated);
+            setSaveModalOpen(false);
+            setTab("projects");
+          }}
+        />
 
         {/* Footer */}
         <footer style={{ borderTop: `1px solid ${C.border}`, padding: "20px 32px", textAlign: "center" }}>
