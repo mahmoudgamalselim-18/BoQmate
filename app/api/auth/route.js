@@ -1,51 +1,88 @@
-// app/api/pro-status/route.js
+// app/api/auth/route.js
+// ─── Supabase Authentication Handler ────────────────────────
 
-export async function GET(request) {
+export async function POST(request) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // حاول تجيب الـ token من أي cookie ممكن
-  const accessToken =
-    request.cookies.get("sb-access-token")?.value ||
-    request.cookies.get("supabase-auth-token")?.value;
+  let body;
+  try { body = await request.json(); } catch {
+    return Response.json({ error: "طلب غير صحيح" }, { status: 400 });
+  }
 
-  if (!accessToken) {
-    return Response.json({ isPro: false, email: null, reason: "no token" });
+  const { mode, email, password, name } = body;
+
+  if (!email || !password) {
+    return Response.json({ error: "الإيميل وكلمة المرور مطلوبان" }, { status: 400 });
   }
 
   try {
-    // اجيب بيانات المستخدم
-    const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      headers: {
-        apikey: anonKey,
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    const userData = await userRes.json();
-    const email = userData?.email;
-
-    if (!email) {
-      return Response.json({ isPro: false, email: null, reason: "no email" });
-    }
-
-    // تحقق من جدول pro_users
-    const proRes = await fetch(
-      `${supabaseUrl}/rest/v1/pro_users?email=eq.${encodeURIComponent(email)}&select=email`,
-      {
+    if (mode === "register") {
+      // ── تسجيل مستخدم جديد ──
+      const res = await fetch(`${supabaseUrl}/auth/v1/signup`, {
+        method: "POST",
         headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
+          "Content-Type": "application/json",
+          apikey: supabaseAnonKey,
         },
+        body: JSON.stringify({
+          email,
+          password,
+          data: { full_name: name || "" },
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.error || data.msg) {
+        const msg = data.error?.message || data.msg || "خطأ في التسجيل";
+        // Translate common errors to Arabic
+        const arabicErrors = {
+          "User already registered": "الإيميل مسجل بالفعل — جرب تسجيل الدخول",
+          "Password should be at least 6 characters": "كلمة المرور 6 أحرف على الأقل",
+          "Unable to validate email address: invalid format": "صيغة الإيميل غير صحيحة",
+        };
+        return Response.json({ error: arabicErrors[msg] || msg });
       }
-    );
 
-    const proData = await proRes.json();
-    const isPro = Array.isArray(proData) && proData.length > 0;
+      return Response.json({ success: true, message: "تم التسجيل — تحقق من إيميلك" });
 
-    return Response.json({ isPro, email });
+    } else {
+      // ── تسجيل الدخول ──
+      const res = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabaseAnonKey,
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await res.json();
+
+      if (data.error || data.error_description) {
+        const msg = data.error_description || data.error || "بيانات غير صحيحة";
+        const arabicErrors = {
+          "Invalid login credentials": "الإيميل أو كلمة المرور غير صحيحة",
+          "Email not confirmed": "يرجى تأكيد إيميلك أولاً",
+          "Too many requests": "محاولات كثيرة — انتظر قليلاً",
+        };
+        return Response.json({ error: arabicErrors[msg] || msg });
+      }
+
+      // كل cookie في header منفصل — ضروري عشان المتصفح يحفظهم صح
+      const resHeaders = new Headers();
+      resHeaders.append("Content-Type", "application/json");
+      resHeaders.append("Set-Cookie", `sb-access-token=${data.access_token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`);
+      resHeaders.append("Set-Cookie", `sb-refresh-token=${data.refresh_token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800`);
+
+      return new Response(JSON.stringify({
+        success: true,
+        access_token: data.access_token,
+        user: data.user,
+      }), { status: 200, headers: resHeaders });
+    }
   } catch (err) {
-    return Response.json({ isPro: false, email: null, error: err.message });
+    return Response.json({ error: `خطأ في الاتصال: ${err.message}` }, { status: 502 });
   }
 }
