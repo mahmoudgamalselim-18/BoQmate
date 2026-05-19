@@ -78,6 +78,7 @@ export default function LoginPage() {
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
             <img src="/logo.svg" alt="BOQmate" style={{ width: 220, height: "auto", objectFit: "contain" }} />
           </div>
+          </div>
         {/* Card */}
         <div style={{
           background: C.navyCard, borderRadius: 20,
