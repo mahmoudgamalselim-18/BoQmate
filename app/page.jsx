@@ -29,7 +29,7 @@ const GlobalStyle = () => (
 
 // Logo assets — served from /public/
 const LOGO_ICON_URI = "/logo.svg";
-const LOGO_FULL_URI = "/logo.svg"";
+const LOGO_FULL_URI = "/logo.svg";
 
 const C = {
   navy: "#0f0f0f",
