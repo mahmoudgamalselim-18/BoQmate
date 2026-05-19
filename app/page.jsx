@@ -1175,11 +1175,7 @@ export default function BoQmate() {
           <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
             {/* Logo */}
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <img src={LOGO_ICON_URI} alt="BOQmate icon" style={{ height: 38, width: "auto", objectFit: "contain" }} />
-              <div style={{ lineHeight: 1 }}>
-                <span style={{ fontSize: 17, fontWeight: 900, color: "#ffffff", letterSpacing: "-0.3px" }}>BOQ</span>
-                <span style={{ fontSize: 17, fontWeight: 900, color: "#F6AA39", letterSpacing: "-0.3px" }}>mate</span>
-              </div>
+              <img src={LOGO_ICON_URI} alt="BOQmate icon" style={{ height: 45, width: "auto", objectFit: "contain" }} />
               <Badge color={C.accent}>Beta</Badge>
             </div>
 
