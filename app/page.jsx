@@ -1174,8 +1174,8 @@ export default function BoQmate() {
         <nav style={{ background: C.navyMid, borderBottom: `1px solid ${C.border}`, padding: "0 32px", position: "sticky", top: 0, zIndex: 100, backdropFilter: "blur(12px)" }}>
           <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
             {/* Logo */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <img src={LOGO_ICON_URI} alt="BOQmate icon" style={{ height: 45, width: "auto", objectFit: "contain" }} />
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginRight: 20 }}>
+              <img src={LOGO_ICON_URI} alt="BOQmate icon" style={{ height: 55, width: "auto", objectFit: "contain" }} />
               <Badge color={C.accent}>Beta</Badge>
             </div>
 
