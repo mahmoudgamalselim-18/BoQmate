@@ -2,7 +2,10 @@ export const metadata = {
   title: "BOQmate — AI-Powered Construction Pricing",
   description: "AI-Powered Construction Pricing",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/logo.svg", type: "image/svg+xml" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
   },
 };
 export default function RootLayout({ children }) {
