@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 
 
@@ -32,6 +32,20 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [logoFailed, setLogoFailed] = useState(false);
+  const [svgContent, setSvgContent] = useState(null);
+
+  useEffect(() => {
+    fetch("/logo.svg")
+      .then(r => { if (!r.ok) throw new Error(); return r.text(); })
+      .then(text => {
+        const responsive = text
+          .replace(/width="\d+"/, 'width="100%"')
+          .replace(/height="\d+"/, 'height="auto"')
+          .replace(/preserveAspectRatio="none"/, 'preserveAspectRatio="xMidYMid meet"');
+        setSvgContent(responsive);
+      })
+      .catch(() => setLogoFailed(true));
+  }, []);
 
   const handleSubmit = async () => {
     if (!email || !password) { setError("الإيميل وكلمة المرور مطلوبان"); return; }
@@ -77,21 +91,21 @@ export default function LoginPage() {
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-            {logoFailed ? (
+            {svgContent ? (
+              <div
+                dangerouslySetInnerHTML={{ __html: svgContent }}
+                style={{ width: 280, maxWidth: "100%" }}
+              />
+            ) : logoFailed ? (
               <div>
                 <span style={{ fontSize: 32, fontWeight: 900, color: C.text }}>BOQ</span>
                 <span style={{ fontSize: 32, fontWeight: 900, color: C.gold }}>mate</span>
                 <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4, letterSpacing: 2 }}>AI-POWERED CONSTRUCTION PRICING</div>
               </div>
             ) : (
-              <img
-                src="/logo.svg"
-                alt="BOQmate"
-                width={280}
-                height={193}
-                onError={() => setLogoFailed(true)}
-                style={{ width: 280, height: "auto", objectFit: "contain", display: "block" }}
-              />
+              <div style={{ width: 280, height: 160, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 32, height: 32, border: `3px solid ${C.border}`, borderTop: `3px solid ${C.gold}`, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
+              </div>
             )}
           </div>
         </div>
