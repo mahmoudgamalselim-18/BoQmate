@@ -1204,7 +1204,7 @@ export default function BoQmate() {
                 <Btn onClick={() => {}} size="sm">⭐ ترقية Pro</Btn>
               )}
               {userEmail && (
-                <button onClick={() => { document.cookie = "sb-access-token=; Max-Age=0; path=/"; document.cookie = "sb-refresh-token=; Max-Age=0; path=/"; window.location.href = "/login"; }}
+                <button onClick={async () => { await fetch("/api/logout", { method: "POST" }); window.location.href = "/login"; }}
                   style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.textMuted, borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontSize: 12, fontFamily: "'Cairo', sans-serif" }}>
                   خروج
                 </button>

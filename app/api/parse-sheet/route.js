@@ -3,8 +3,14 @@
 // نفس الفكرة — max_tokens أكبر لأن الشيت ممكن يكون كبير
 
 export async function POST(request) {
+  // تحقق من الـ session
+  const accessToken = request.cookies.get("sb-access-token")?.value;
+  if (!accessToken) {
+    return Response.json({ error: "غير مصرح" }, { status: 401 });
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  
+
   if (!apiKey) {
     return Response.json(
       { error: "ANTHROPIC_API_KEY غير مضبوط في بيئة السيرفر" },
@@ -64,6 +70,6 @@ export async function POST(request) {
     clearMessage = JSON.stringify(error);
   }
 
-  return NextResponse.json({ error: clearMessage }, { status: 500 });
+  return Response.json({ error: clearMessage }, { status: 500 });
 }
 }
