@@ -78,7 +78,6 @@ export async function POST(request) {
 
       return new Response(JSON.stringify({
         success: true,
-        access_token: data.access_token,
         user: data.user,
       }), { status: 200, headers: resHeaders });
     }

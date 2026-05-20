@@ -23,17 +23,11 @@ export async function GET(request) {
       const data = await res.json();
 
       if (data.access_token) {
-        // Set session and redirect to app
-        return new Response(null, {
-          status: 302,
-          headers: {
-            Location: `${origin}/`,
-            "Set-Cookie": [
-              `sb-access-token=${data.access_token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`,
-              `sb-refresh-token=${data.refresh_token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800`,
-            ].join(", "),
-          },
-        });
+        const headers = new Headers();
+        headers.append("Location", `${origin}/`);
+        headers.append("Set-Cookie", `sb-access-token=${data.access_token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=3600`);
+        headers.append("Set-Cookie", `sb-refresh-token=${data.refresh_token}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800`);
+        return new Response(null, { status: 302, headers });
       }
     } catch {}
   }

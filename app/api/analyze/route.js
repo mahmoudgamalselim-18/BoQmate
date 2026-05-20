@@ -1,6 +1,12 @@
 // app/api/analyze/route.js
 
 export async function POST(request) {
+  // تحقق من الـ session
+  const accessToken = request.cookies.get("sb-access-token")?.value;
+  if (!accessToken) {
+    return Response.json({ error: "غير مصرح" }, { status: 401 });
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
   if (!apiKey) {
