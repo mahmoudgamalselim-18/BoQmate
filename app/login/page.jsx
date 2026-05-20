@@ -31,6 +31,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [logoFailed, setLogoFailed] = useState(false);
 
   const handleSubmit = async () => {
     if (!email || !password) { setError("الإيميل وكلمة المرور مطلوبان"); return; }
@@ -76,9 +77,24 @@ export default function LoginPage() {
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: 32 }}>
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
-            <img src="/logo.svg" alt="BOQmate" style={{ width: 220, height: "auto", objectFit: "contain" }} />
+            {logoFailed ? (
+              <div>
+                <span style={{ fontSize: 32, fontWeight: 900, color: C.text }}>BOQ</span>
+                <span style={{ fontSize: 32, fontWeight: 900, color: C.gold }}>mate</span>
+                <div style={{ fontSize: 11, color: C.textMuted, marginTop: 4, letterSpacing: 2 }}>AI-POWERED CONSTRUCTION PRICING</div>
+              </div>
+            ) : (
+              <img
+                src="/logo.svg"
+                alt="BOQmate"
+                width={280}
+                height={193}
+                onError={() => setLogoFailed(true)}
+                style={{ width: 280, height: "auto", objectFit: "contain", display: "block" }}
+              />
+            )}
           </div>
-          </div>
+        </div>
         {/* Card */}
         <div style={{
           background: C.navyCard, borderRadius: 20,
