@@ -855,10 +855,19 @@ const ReportsTab = ({ analysisResults, isPro = false }) => {
     return baseCost;
   };
 
+// 1. حساب التكلفة المباشرة (مجموع البنود)
   const subtotal = successItems.reduce((s, i) => s + (i.totalCost || 0), 0);
-  const additionsTotal = additionsMode === "total" ? additions.reduce((s, a) => s + subtotal * (a.pct / 100), 0) : 0;
-  const vatBase = additionsMode === "total" ? subtotal + additionsTotal : subtotal + additions.reduce((s,a)=>s+subtotal*(a.pct/100),0);
-  const vat = showVat ? vatBase * 0.14 : 0;
+
+  // 2. إجمالي قيمة الهوامش والمصاريف (قيمتها ثابتة كإجمالي سواء اتعرضت لكل بند أو للإجمالي)
+  const additionsTotal = additions.reduce((s, a) => s + subtotal * (a.pct / 100), 0);
+
+  // 3. وعاء الضريبة = (التكلفة المباشرة + الهوامش)
+  const vatBase = subtotal + additionsTotal;
+
+  // 4. قيمة الضريبة (لو متفعلة)
+  const vat = showVat ? (vatBase * 0.14) : 0;
+
+  // 5. الإجمالي الكلي الفعلي (عمره ما هينقص تاني)
   const total = subtotal + additionsTotal + vat;
 
   if (successItems.length === 0) return (
