@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import { generateExcel, generatePDF } from "./lib/export-utils";
 
 // ============================================================
 // GLOBAL STYLES & FONT INJECTION
@@ -168,6 +169,84 @@ const Input = ({ label, value, onChange, placeholder, type = "text", readOnly })
 const Badge = ({ children, color = C.gold }) => (
   <span style={{ background: `${color}22`, color, border: `1px solid ${color}44`, borderRadius: 20, padding: "2px 10px", fontSize: 12, fontWeight: 600 }}>{children}</span>
 );
+
+// ============================================================
+// EXPORT MODAL
+// ============================================================
+const ExportModal = ({ open, onClose, analysisResults, additions, showVAT, projectName = "BOQ_Report" }) => {
+  const [exporting, setExporting] = useState(false);
+  const [exportType, setExportType] = useState("excel");
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      if (exportType === "excel") {
+        await generateExcel(analysisResults, projectName, additions, showVAT);
+      } else {
+        await generatePDF(analysisResults, projectName, additions, showVAT);
+      }
+    } catch (error) {
+      alert(`فشل التصدير: ${error.message}`);
+    } finally {
+      setExporting(false);
+      onClose();
+    }
+  };
+
+  if (!open) return null;
+  return (
+    <Modal open={open} onClose={onClose} width={480}>
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>📥</div>
+        <div style={{ color: C.text, fontSize: 20, fontWeight: 800, marginBottom: 20 }}>تصدير التقرير</div>
+
+        <div style={{ background: C.navyLight, borderRadius: 12, padding: 16, marginBottom: 20, textAlign: "right" }}>
+          <div style={{ marginBottom: 12 }}>
+            <span style={{ color: C.textMuted, fontSize: 13, fontWeight: 600 }}>اختر صيغة التصدير:</span>
+          </div>
+          {[
+            { value: "excel", label: "📊 ملف Excel", desc: "جدول كامل قابل للتعديل" },
+            { value: "pdf", label: "📄 ملف PDF", desc: "تقرير جاهز للطباعة" },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setExportType(opt.value)}
+              style={{
+                width: "100%",
+                padding: "12px 14px",
+                marginBottom: 10,
+                border: `2px solid ${exportType === opt.value ? C.gold : C.border}`,
+                borderRadius: 8,
+                background: exportType === opt.value ? `${C.gold}15` : C.navyMid,
+                color: exportType === opt.value ? C.gold : C.textMuted,
+                fontSize: 14,
+                fontFamily: "'Cairo', sans-serif",
+                fontWeight: 600,
+                cursor: "pointer",
+                textAlign: "right",
+                direction: "rtl",
+                transition: "all 0.2s",
+              }}>
+              <div style={{ marginBottom: 4 }}>{opt.label}</div>
+              <div style={{ fontSize: 12, color: exportType === opt.value ? C.accent : C.textMuted }}>
+                {opt.desc}
+              </div>
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+          <Btn onClick={handleExport} disabled={exporting}>
+            {exporting ? "⏳ جاري التصدير..." : "📥 تصدير الآن"}
+          </Btn>
+          <Btn variant="ghost" onClick={onClose}>
+            إلغاء
+          </Btn>
+        </div>
+      </div>
+    </Modal>
+  );
+};
 
 // ============================================================
 // PAYWALL MODAL
@@ -837,6 +916,7 @@ const ProjectsTab = ({ isPro, onLoad }) => {
 
 const ReportsTab = ({ analysisResults, isPro = false }) => {
   const [paywallOpen, setPaywallOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   // طريقة تطبيق الإضافات: "total" = على الإجمالي | "each" = على كل بند
   const [additionsMode, setAdditionsMode] = useState("total");
   // هل تظهر ضريبة القيمة المضافة
@@ -886,7 +966,7 @@ const ReportsTab = ({ analysisResults, isPro = false }) => {
           <h2 style={{ fontSize: 22, fontWeight: 800, color: C.text }}>التقرير النهائي</h2>
           <p style={{ color: C.textMuted, fontSize: 13, marginTop: 4 }}>ملخص التكاليف مع الهوامش والضرائب</p>
         </div>
-        <Btn variant="accent" size="lg" onClick={() => isPro ? alert("قريباً — ميزة التصدير قيد التطوير") : setPaywallOpen(true)}>
+        <Btn variant="accent" size="lg" onClick={() => setExportOpen(true)}>
           📥 تصدير Excel / PDF
         </Btn>
       </div>
@@ -1005,6 +1085,7 @@ const ReportsTab = ({ analysisResults, isPro = false }) => {
         </div>
       </div>
 
+      <ExportModal open={exportOpen} onClose={() => setExportOpen(false)} analysisResults={successItems} additions={additionsMode === "total" ? additions : []} showVAT={showVat && additionsMode === "total"} projectName="BOQ_Report" />
       <PaywallModal open={paywallOpen} onClose={() => setPaywallOpen(false)} type="export" />
     </div>
   );

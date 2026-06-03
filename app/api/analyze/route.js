@@ -103,25 +103,23 @@ export async function POST(request) {
   // ── 2. جيب الـ reference recipes من Supabase ──────────────
   let referenceContext = '';
   try {
-    const refRes = await fetch(`${supabaseUrl.replace(/\/$/, '')}/rest/v1/reference_boq?limit=3`, {
-      headers: {
-        apikey: supabaseKey,
-        Authorization: `Bearer ${supabaseKey}`,
-      },
-    });
-
-    // Search by keywords
+    // Extract keywords from item description - improved keyword extraction
     const keywords = itemDescription
       .replace(/[^\u0600-\u06FFa-zA-Z0-9\s]/g, ' ')
       .trim()
       .split(/\s+/)
       .filter(w => w.length > 2)
-      .slice(0, 4);
+      .slice(0, 5); // Increased from 4 to 5 keywords
 
     if (keywords.length > 0) {
-      const likeClause = keywords.map(w => `keywords.ilike.*${w}*`).join(',');
+      // Build OR clause for Supabase full-text search
+      const likeClause = keywords
+        .map(w => `description.ilike.*${w}*`)
+        .concat(keywords.map(w => `keywords.ilike.*${w}*`))
+        .join(',');
+
       const searchRes = await fetch(
-        `${supabaseUrl}/rest/v1/reference_boq?or=(${likeClause})&limit=3`,
+        `${supabaseUrl}/rest/v1/reference_boq?or=(${likeClause})&limit=5`,
         {
           headers: {
             apikey: supabaseKey,
@@ -132,9 +130,11 @@ export async function POST(request) {
 
       if (searchRes.ok) {
         const recipes = await searchRes.json();
+        
+        console.log(`📚 Reference search found ${recipes?.length || 0} recipes for keywords: [${keywords.join(', ')}]`);
 
         if (recipes?.length > 0) {
-          // Fetch resource prices
+          // Fetch resource prices from global_resources
           const resourceIds = new Set();
           recipes.forEach(rec => {
             const r = rec.recipe;
@@ -151,40 +151,61 @@ export async function POST(request) {
             );
             if (resRes.ok) {
               const resData = await resRes.json();
-              resData.forEach(r => { resources[r.resource_id] = { current_price: parseFloat(r.current_price)||0, name: r.name }; });
+              resData.forEach(r => { 
+                resources[r.resource_id] = { 
+                  current_price: parseFloat(r.current_price) || 0, 
+                  name: r.name 
+                }; 
+              });
+              console.log(`✅ Loaded ${Object.keys(resources).length} resource prices`);
+            } else {
+              console.warn(`⚠️ Failed to fetch resource prices: ${resRes.status}`);
             }
           }
 
-          // Fetch market prices
-          const matWords = [];
-          recipes.forEach(rec => (rec.recipe.materials||[]).forEach(m => {
-            const w = m.desc.split(' ')[0];
-            if (w.length > 2) matWords.push(w);
-          }));
-
+          // Fetch from global_prices table as well
           let marketPrices = {};
-          if (matWords.length > 0) {
-            const nf = [...new Set(matWords)].slice(0,6).map(n=>`name.ilike.*${n}*`).join(',');
+          const searchWords = keywords.slice(0, 4);
+          if (searchWords.length > 0) {
+            const priceFilters = searchWords
+              .map(n => `name.ilike.*${n}*`)
+              .join(',');
             const mRes = await fetch(
-              `${supabaseUrl}/rest/v1/global_prices?or=(${nf})&select=name,price&limit=15`,
+              `${supabaseUrl}/rest/v1/global_prices?or=(${priceFilters})&select=name,price&limit=20`,
               { headers: { apikey: supabaseKey, Authorization: `Bearer ${supabaseKey}` } }
             );
             if (mRes.ok) {
               const mData = await mRes.json();
-              mData.forEach(i => { marketPrices[i.name] = parseFloat(i.price)||0; });
+              mData.forEach(i => { 
+                marketPrices[i.name] = parseFloat(i.price) || 0; 
+              });
+              console.log(`✅ Loaded ${Object.keys(marketPrices).length} market prices`);
             }
           }
 
-          referenceContext = buildReferenceContext(recipes, resources, marketPrices);
+          referenceContext = buildReferenceContext(recipes.slice(0, 2), resources, marketPrices);
+          console.log(`📝 Built reference context: ${referenceContext.length} characters`);
+        } else {
+          console.log(`ℹ️ No reference recipes found - will use default pricing`);
         }
+      } else {
+        console.warn(`⚠️ Supabase search failed: ${searchRes.status} ${searchRes.statusText}`);
       }
+    } else {
+      console.log(`ℹ️ No keywords extracted from description`);
     }
   } catch (e) {
-    console.error('Reference search error:', e.message);
+    console.error('❌ Reference search error:', e.message);
   }
 
   // ── 3. Build enhanced system prompt ───────────────────────
   const enhancedSystem = SYSTEM_PROMPT + referenceContext;
+  
+  if (referenceContext) {
+    console.log(`✅ Sending enhanced prompt to Claude with reference examples`);
+  } else {
+    console.log(`ℹ️ Sending base prompt to Claude (no reference examples)`);
+  }
 
   // ── 4. Call Claude ─────────────────────────────────────────
   try {
