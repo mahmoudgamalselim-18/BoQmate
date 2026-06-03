@@ -959,7 +959,7 @@ const ReportsTab = ({ analysisResults, isPro = false }) => {
   );
 
   return (
-    <div className="fade-in">
+    <div id="boqmate-report-export" className="fade-in">
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
         <div>
