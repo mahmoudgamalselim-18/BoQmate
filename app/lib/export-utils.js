@@ -3,20 +3,48 @@
 // Utilities for exporting BOQ reports to Excel and PDF
 // ─────────────────────────────────────────────────────────────
 
+const ARABIC_FONT_URL = "https://github.com/alif-type/amiri/raw/master/Amiri-Regular.ttf";
+
+function arrayBufferToBase64(buffer) {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function ensureArabicFont(doc) {
+  if (typeof window === "undefined") return;
+  if (window.__boqmateArabicFontLoaded) return;
+
+  const response = await fetch(ARABIC_FONT_URL);
+  if (!response.ok) {
+    throw new Error("تعذر تحميل خط التصدير العربي");
+  }
+
+  const buffer = await response.arrayBuffer();
+  const base64 = arrayBufferToBase64(buffer);
+  doc.addFileToVFS("Amiri-Regular.ttf", base64);
+  doc.addFont("Amiri-Regular.ttf", "Amiri", "normal");
+  doc.addFont("Amiri-Regular.ttf", "Amiri", "bold");
+  window.__boqmateArabicFontLoaded = true;
+}
+
 export async function generateExcel(
   analysisResults,
   projectName = "BOQ_Report",
   additions = [],
   includeVAT = true
 ) {
-  // Dynamically import XLSX
-  const XLSX = (await import("xlsx")).default;
+  const XLSXModule = await import("xlsx");
+  const XLSX = XLSXModule.default || XLSXModule;
 
   if (!analysisResults || analysisResults.length === 0) {
     throw new Error("No items to export");
   }
 
-  // Calculate totals
   const successItems = analysisResults.filter((i) => i.status === "success");
   const subtotal = successItems.reduce((s, i) => s + (i.totalCost || 0), 0);
   const additionsTotal = additions.reduce(
@@ -26,14 +54,10 @@ export async function generateExcel(
   const vat = includeVAT ? (subtotal + additionsTotal) * 0.14 : 0;
   const total = subtotal + additionsTotal + vat;
 
-  // Create worksheet data
   const worksheetData = [];
 
-  // Header
   worksheetData.push(["تقرير المقايسة", projectName, "", "", "", "", ""]);
   worksheetData.push(["", "", "", "", "", "", ""]);
-
-  // Item details header
   worksheetData.push([
     "البند",
     "الكمية",
@@ -44,21 +68,18 @@ export async function generateExcel(
     "المصدر",
   ]);
 
-  // Item rows
   successItems.forEach((item) => {
+    const unitPrice = item.quantity ? item.totalCost / item.quantity : item.totalCost;
     worksheetData.push([
       item.itemName || item.raw,
       item.quantity || "",
       item.unit || "",
-      item.breakdown && item.breakdown.length > 0
-        ? (item.totalCost / item.quantity).toFixed(2)
-        : item.totalCost,
-      item.totalCost.toFixed(2),
+      unitPrice ? unitPrice.toFixed(2) : "",
+      item.totalCost?.toFixed(2) || "",
       "مادة",
       "سوق",
     ]);
 
-    // Add breakdown components if available
     if (item.breakdown && item.breakdown.length > 0) {
       worksheetData.push(["تفاصيل المكونات:", "", "", "", "", "", ""]);
       item.breakdown.forEach((component) => {
@@ -75,12 +96,10 @@ export async function generateExcel(
     }
   });
 
-  // Summary section
   worksheetData.push(["", "", "", "", "", "", ""]);
   worksheetData.push(["ملخص التكاليف", "", "", "", "", "", ""]);
   worksheetData.push(["التكلفة المباشرة", subtotal.toFixed(2), "", "", "", "", ""]);
 
-  // Additions
   additions.forEach((add) => {
     const amount = subtotal * (add.pct / 100);
     worksheetData.push([
@@ -94,12 +113,10 @@ export async function generateExcel(
     ]);
   });
 
-  // VAT
   if (includeVAT) {
     worksheetData.push(["ضريبة القيمة المضافة (14%)", vat.toFixed(2), "", "", "", "", ""]);
   }
 
-  // Total
   worksheetData.push([
     includeVAT
       ? "الإجمالي الكلي شامل الضريبة"
@@ -112,24 +129,33 @@ export async function generateExcel(
     "",
   ]);
 
-  // Create workbook and worksheet
   const ws = XLSX.utils.aoa_to_sheet(worksheetData);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "المقايسة");
 
-  // Style the worksheet
   ws["!cols"] = [
-    { wch: 30 }, // Column A
-    { wch: 12 }, // Column B
-    { wch: 10 }, // Column C
-    { wch: 12 }, // Column D
-    { wch: 12 }, // Column E
-    { wch: 10 }, // Column F
-    { wch: 10 }, // Column G
+    { wch: 30 },
+    { wch: 12 },
+    { wch: 10 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 10 },
+    { wch: 10 },
   ];
 
-  // Write file
-  XLSX.writeFile(wb, `${projectName}.xlsx`);
+  const wbout = XLSX.write(wb, {
+    bookType: "xlsx",
+    type: "array",
+  });
+  const blob = new Blob([wbout], { type: "application/octet-stream" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${projectName}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 export async function generatePDF(
@@ -139,15 +165,13 @@ export async function generatePDF(
   includeVAT = true,
   companyInfo = {}
 ) {
-  // Dynamically import jsPDF and autotable
   const { jsPDF } = await import("jspdf");
-  const autoTable = await import("jspdf-autotable");
+  await import("jspdf-autotable");
 
   if (!analysisResults || analysisResults.length === 0) {
     throw new Error("No items to export");
   }
 
-  // Calculate totals
   const successItems = analysisResults.filter((i) => i.status === "success");
   const subtotal = successItems.reduce((s, i) => s + (i.totalCost || 0), 0);
   const additionsTotal = additions.reduce(
@@ -157,7 +181,6 @@ export async function generatePDF(
   const vat = includeVAT ? (subtotal + additionsTotal) * 0.14 : 0;
   const total = subtotal + additionsTotal + vat;
 
-  // Create PDF
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
@@ -165,42 +188,51 @@ export async function generatePDF(
     compress: true,
   });
 
-  // Set font for RTL support (will use default font with special handling)
-  doc.setFont("Arial", "normal");
+  try {
+    await ensureArabicFont(doc);
+    doc.setFont("Amiri", "normal");
+  } catch (error) {
+    console.warn("Arabic font load failed, falling back to default PDF font.", error);
+  }
   doc.setFontSize(14);
 
-  // Header
-  doc.text(projectName, 148, 20, { align: "right" });
+  doc.text(projectName, 198, 20, { align: "right" });
   doc.setFontSize(10);
-  doc.text(`تاريخ: ${new Date().toLocaleDateString("ar-EG")}`, 148, 28, {
+  doc.text(`تاريخ: ${new Date().toLocaleDateString("ar-EG")}`, 198, 28, {
     align: "right",
   });
 
   if (companyInfo.name) {
     doc.setFontSize(11);
-    doc.text(companyInfo.name, 148, 36, { align: "right" });
+    doc.text(companyInfo.name, 198, 36, { align: "right" });
   }
 
-  // Table data
   const tableData = successItems.map((item) => [
     item.itemName || item.raw,
     item.quantity || "-",
     item.unit || "-",
-    `${(item.totalCost / (item.quantity || 1)).toFixed(0)}`,
+    `${(item.quantity ? item.totalCost / item.quantity : item.totalCost).toFixed(0)}`,
     `${item.totalCost.toFixed(0)}`,
   ]);
 
-  // Create table
   doc.autoTable({
     head: [["البند", "الكمية", "الوحدة", "سعر الوحدة", "الإجمالي"]],
     body: tableData,
     startY: 50,
     theme: "grid",
-    halign: "right",
-    valign: "middle",
+    styles: {
+      font: "Amiri",
+      fontStyle: "normal",
+      fontSize: 10,
+      halign: "right",
+    },
+    headStyles: {
+      fillColor: [240, 240, 240],
+      textColor: [0, 0, 0],
+      halign: "center",
+    },
     margin: { right: 10, left: 10 },
     didDrawPage: function (data) {
-      // Footer
       const pageSize = doc.internal.pageSize;
       const pageHeight = pageSize.getHeight();
       doc.setFontSize(9);
@@ -213,48 +245,40 @@ export async function generatePDF(
     },
   });
 
-  // Summary section
   let finalY = doc.lastAutoTable.finalY + 15;
-
   doc.setFontSize(11);
-  doc.text("ملخص التكاليف:", 148, finalY, { align: "right" });
+  doc.text("ملخص التكاليف:", 198, finalY, { align: "right" });
   finalY += 8;
 
   doc.setFontSize(10);
-  doc.text(`التكلفة المباشرة: ${subtotal.toFixed(0)} ج.م`, 148, finalY, {
+  doc.text(`التكلفة المباشرة: ${subtotal.toFixed(0)} ج.م`, 198, finalY, {
     align: "right",
   });
   finalY += 6;
 
-  // Additions
   additions.forEach((add) => {
     const amount = subtotal * (add.pct / 100);
-    doc.text(`${add.label} (${add.pct}%): ${amount.toFixed(0)} ج.م`, 148, finalY, {
+    doc.text(`${add.label} (${add.pct}%): ${amount.toFixed(0)} ج.م`, 198, finalY, {
       align: "right",
     });
     finalY += 6;
   });
 
-  // VAT
   if (includeVAT) {
-    doc.text(`ضريبة القيمة المضافة (14%): ${vat.toFixed(0)} ج.م`, 148, finalY, {
+    doc.text(`ضريبة القيمة المضافة (14%): ${vat.toFixed(0)} ج.م`, 198, finalY, {
       align: "right",
     });
     finalY += 8;
   }
 
-  // Total
-  doc.setFont("Arial", "bold");
+  doc.setFont("Amiri", "bold");
   doc.setFontSize(12);
   doc.text(
     `الإجمالي الكلي: ${total.toFixed(0)} ج.م`,
-    148,
+    198,
     finalY,
-    {
-      align: "right",
-    }
+    { align: "right" }
   );
 
-  // Save PDF
   doc.save(`${projectName}.pdf`);
 }
