@@ -149,30 +149,15 @@ export async function generatePDF(
     throw new Error("Report content not found for PDF export");
   }
 
-  const html2canvasModule = await import("html2canvas");
-  const html2canvas = html2canvasModule.default || html2canvasModule;
-  const canvas = await html2canvas(reportElement, {
-    scale: 2,
-    backgroundColor: null,
-    useCORS: true,
-  });
+  // Set the document title for PDF filename
+  const originalTitle = document.title;
+  document.title = projectName;
 
-  const imgData = canvas.toDataURL("image/jpeg", 0.95);
-  const { jsPDF } = await import("jspdf");
-  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-  const imgWidth = pageWidth;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  // Trigger print dialog
+  window.print();
 
-  let position = 0;
-  pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-
-  while (imgHeight + position > pageHeight) {
-    position -= pageHeight;
-    pdf.addPage();
-    pdf.addImage(imgData, "JPEG", 0, position, imgWidth, imgHeight);
-  }
-
-  pdf.save(`${projectName}.pdf`);
+  // Restore original title after a brief delay to allow print to start
+  setTimeout(() => {
+    document.title = originalTitle;
+  }, 100);
 }

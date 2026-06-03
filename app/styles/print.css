@@ -1,0 +1,261 @@
+/* Print Stylesheet for BoQmate Reports */
+/* Optimized for A4 size with Arabic RTL support */
+
+@media print {
+  /* Reset all body defaults */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    background: white !important;
+    color: #000 !important;
+    font-family: 'Cairo', 'Segoe UI', sans-serif !important;
+    direction: rtl !important;
+    text-align: right !important;
+    line-height: 1.5 !important;
+  }
+
+  /* Hide all UI elements */
+  nav,
+  header,
+  footer,
+  .navbar,
+  .modal,
+  .modal-overlay,
+  [class*="modal"],
+  [class*="Modal"],
+  .sidebar,
+  .button,
+  button:not([id*="print"]),
+  input,
+  textarea,
+  select,
+  [role="tablist"],
+  [role="tab"],
+  .fade-in {
+    display: none !important;
+  }
+
+  /* Show only the report content */
+  #boqmate-report-export {
+    display: block !important;
+    visibility: visible !important;
+    margin: 0 !important;
+    padding: 0.5cm !important;
+    width: 100% !important;
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Page setup */
+  @page {
+    size: A4;
+    margin: 1cm;
+    margin-right: 1.5cm;
+    margin-left: 1.5cm;
+  }
+
+  /* Ensure proper RTL layout */
+  div,
+  p,
+  span,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    direction: rtl !important;
+    text-align: right !important;
+    page-break-inside: avoid;
+  }
+
+  /* Header styling */
+  #boqmate-report-export > div:first-child {
+    page-break-after: avoid;
+    margin-bottom: 1cm;
+    border-bottom: 2px solid #333;
+    padding-bottom: 0.5cm;
+  }
+
+  /* Title and subtitle */
+  h2 {
+    font-size: 18pt !important;
+    font-weight: 900 !important;
+    color: #000 !important;
+    margin-bottom: 0.3cm !important;
+  }
+
+  p {
+    font-size: 10pt !important;
+    color: #333 !important;
+  }
+
+  /* Report settings box */
+  #boqmate-report-export > div:nth-child(2) {
+    display: none !important;
+  }
+
+  /* Summary cards */
+  #boqmate-report-export > div:nth-child(3) {
+    margin: 1cm 0;
+    page-break-inside: avoid;
+  }
+
+  #boqmate-report-export > div:nth-child(3) > div {
+    border: 1px solid #ccc !important;
+    background: #f9f9f9 !important;
+    padding: 0.5cm !important;
+    margin-bottom: 0.3cm !important;
+    page-break-inside: avoid;
+  }
+
+  /* Table styling */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 0.5cm 0 !important;
+    page-break-inside: avoid;
+  }
+
+  thead {
+    display: table-header-group;
+    background: #e8e8e8 !important;
+  }
+
+  tbody {
+    display: table-row-group;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    border: 1px solid #ccc !important;
+  }
+
+  th,
+  td {
+    border: 1px solid #ccc !important;
+    padding: 0.4cm !important;
+    font-size: 9pt !important;
+    text-align: right !important;
+    direction: rtl !important;
+  }
+
+  th {
+    background: #e8e8e8 !important;
+    font-weight: bold !important;
+    color: #000 !important;
+  }
+
+  /* Grid layout items */
+  [style*="grid"] {
+    display: block !important;
+  }
+
+  [style*="display: grid"] > div {
+    display: block !important;
+    page-break-inside: avoid;
+    margin-bottom: 0.3cm;
+    border: 1px solid #ccc;
+    padding: 0.5cm;
+    background: #f9f9f9;
+  }
+
+  /* Summary section styling */
+  #boqmate-report-export > div[style*="background"] {
+    background: white !important;
+    border: 1px solid #ccc !important;
+    padding: 0.5cm !important;
+    page-break-inside: avoid;
+  }
+
+  /* Items detail styling */
+  #boqmate-report-export > div:nth-child(4) {
+    margin: 0.5cm 0;
+    page-break-inside: avoid;
+  }
+
+  #boqmate-report-export > div:nth-child(4) > div {
+    border-bottom: 1px solid #ccc !important;
+    padding: 0.3cm 0 !important;
+    font-size: 9pt !important;
+  }
+
+  /* Cost summary section */
+  #boqmate-report-export > div:last-child {
+    margin-top: 1cm;
+    page-break-inside: avoid;
+    border-top: 2px solid #333 !important;
+    padding-top: 0.5cm;
+  }
+
+  #boqmate-report-export > div:last-child > div {
+    display: flex !important;
+    justify-content: space-between !important;
+    padding: 0.3cm 0 !important;
+    border-bottom: 1px solid #ddd !important;
+    font-size: 9pt !important;
+  }
+
+  /* Total row emphasis */
+  #boqmate-report-export > div:last-child > div:last-child {
+    border: none !important;
+    border-top: 2px solid #000 !important;
+    margin-top: 0.3cm !important;
+    padding-top: 0.5cm !important;
+    font-size: 12pt !important;
+    font-weight: bold !important;
+  }
+
+  /* No page breaks within critical content */
+  [class*="Card"],
+  [class*="Summary"],
+  [class*="Total"] {
+    page-break-inside: avoid;
+  }
+
+  /* Arabic-specific typography */
+  body,
+  * {
+    font-family: 'Cairo', 'Tahoma', 'Arial', sans-serif !important;
+    letter-spacing: 0.02em;
+  }
+
+  /* Flexbox to block for print */
+  [style*="display: flex"] {
+    display: block !important;
+  }
+
+  /* Remove all colors except text and borders */
+  [style*="background"] {
+    background: white !important;
+  }
+
+  [style*="color"] {
+    color: black !important;
+  }
+
+  /* Ensure text is visible */
+  * {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  /* Print-friendly spacing */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin: 0.5cm 0 0.2cm 0 !important;
+    page-break-after: avoid;
+  }
+
+  p {
+    margin: 0.2cm 0 !important;
+  }
+}

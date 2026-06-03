@@ -1,3 +1,5 @@
+import "./styles/print.css";
+
 export const metadata = {
   title: "BOQmate — AI-Powered Construction Pricing",
   description: "AI-Powered Construction Pricing",
