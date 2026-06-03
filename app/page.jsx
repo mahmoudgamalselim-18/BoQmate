@@ -176,6 +176,9 @@ const Badge = ({ children, color = C.gold }) => (
 const ExportModal = ({ open, onClose, analysisResults, additions, showVAT, projectName = "BOQ_Report" }) => {
   const [exporting, setExporting] = useState(false);
   const [exportType, setExportType] = useState("excel");
+  
+  // Get company info from localStorage
+  const companyInfo = LS.get("boqmate_company_info", {});
 
   const handleExport = async () => {
     setExporting(true);
@@ -183,7 +186,7 @@ const ExportModal = ({ open, onClose, analysisResults, additions, showVAT, proje
       if (exportType === "excel") {
         await generateExcel(analysisResults, projectName, additions, showVAT);
       } else {
-        await generatePDF(analysisResults, projectName, additions, showVAT);
+        await generatePDF(analysisResults, projectName, additions, showVAT, companyInfo);
       }
     } catch (error) {
       alert(`فشل التصدير: ${error.message}`);
@@ -1100,8 +1103,43 @@ const SettingsTab = ({ isPro = false }) => {
   const [additions, setAdditions] = useState(() => LS.get("boqmate_additions", FREE_ADDITIONS));
   const [newLabel, setNewLabel] = useState("");
   const [newPct, setNewPct] = useState("");
-  // isPro comes from parent via prop
+  
+  // Company Info State
+  const [companyInfo, setCompanyInfo] = useState(() => LS.get("boqmate_company_info", {
+    name: "",
+    address: "",
+    phone: "",
+    logo: ""
+  }));
+  const [logoPreview, setLogoPreview] = useState(companyInfo.logo || "");
 
+  // Save company info to localStorage
+  const saveCompanyInfo = (info) => {
+    setCompanyInfo(info);
+    LS.set("boqmate_company_info", info);
+  };
+
+  // Handle company field changes
+  const handleCompanyChange = (field, value) => {
+    const updated = { ...companyInfo, [field]: value };
+    saveCompanyInfo(updated);
+  };
+
+  // Handle logo upload
+  const handleLogoUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const base64 = evt.target?.result;
+        setLogoPreview(base64);
+        handleCompanyChange("logo", base64);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // isPro comes from parent via prop
   const saveAdditions = (list) => { setAdditions(list); LS.set("boqmate_additions", list); };
   const handleAddRow = () => {
     if (!newLabel.trim() || !newPct) return;
@@ -1126,14 +1164,73 @@ const SettingsTab = ({ isPro = false }) => {
       {/* Company Info */}
       <div style={{ background: C.navyCard, borderRadius: 14, border: `1px solid ${C.border}`, padding: 24, marginBottom: 20 }}>
         <h3 style={{ color: C.text, fontWeight: 700, marginBottom: 20, fontSize: 15 }}>🏢 بيانات الشركة</h3>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-          <Input label="اسم الشركة" placeholder="مثال: المكتب العربي للتشييد والبناء" />
-          <Input label="رقم الضريبة" placeholder="000-000-000" />
-          <Input label="العنوان" placeholder="الإسكندرية، مصر" />
-          <Input label="رقم الهاتف" placeholder="+20 3 000 0000" />
+        
+        {/* Logo Upload */}
+        <div style={{ marginBottom: 20 }}>
+          <label style={{ display: "block", color: C.textMuted, fontSize: 13, fontWeight: 600, marginBottom: 10 }}>📸 شعار الشركة</label>
+          <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+            {logoPreview && (
+              <div style={{ width: 100, height: 100, borderRadius: 8, border: `1px solid ${C.border}`, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", background: C.navyMid }}>
+                <img src={logoPreview} alt="Logo preview" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+              </div>
+            )}
+            <div style={{ flex: 1 }}>
+              <label style={{ display: "inline-block", padding: "10px 16px", background: `${C.gold}15`, border: `1px dashed ${C.gold}50`, borderRadius: 8, color: C.gold, fontWeight: 600, cursor: "pointer", fontSize: 13 }}>
+                📤 اختر الصورة
+                <input type="file" accept="image/*" onChange={handleLogoUpload} style={{ display: "none" }} />
+              </label>
+              <p style={{ color: C.textMuted, fontSize: 12, marginTop: 8 }}>الصيغ المدعومة: JPG, PNG, SVG</p>
+              {logoPreview && (
+                <button onClick={() => { setLogoPreview(""); handleCompanyChange("logo", ""); }}
+                  style={{ marginTop: 8, padding: "6px 12px", background: `${C.danger}20`, border: `1px solid ${C.danger}40`, color: C.danger, borderRadius: 6, cursor: "pointer", fontSize: 12, fontFamily: "'Cairo', sans-serif", fontWeight: 600 }}>
+                  ✕ حذف الشعار
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-        <div style={{ background: `${C.gold}15`, border: `1px solid ${C.gold}40`, borderRadius: 8, padding: "10px 14px", marginTop: 8 }}>
-          <span style={{ color: C.gold, fontSize: 13 }}>🔒 بيانات الشركة تظهر في التقارير المصدَّرة — متاح في النسخة Pro فقط.</span>
+
+        {/* Company Fields */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+          {/* Company Name */}
+          <div>
+            <label style={{ display: "block", color: C.textMuted, fontSize: 13, fontWeight: 600, marginBottom: 8 }}>اسم الشركة</label>
+            <input
+              type="text"
+              value={companyInfo.name}
+              onChange={(e) => handleCompanyChange("name", e.target.value)}
+              placeholder="مثال: المكتب العربي للتشييد والبناء"
+              style={{ width: "100%", padding: "10px 12px", background: C.navyMid, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: 13, fontFamily: "'Cairo', sans-serif", outline: "none" }}
+            />
+          </div>
+          
+          {/* Address */}
+          <div>
+            <label style={{ display: "block", color: C.textMuted, fontSize: 13, fontWeight: 600, marginBottom: 8 }}>العنوان</label>
+            <input
+              type="text"
+              value={companyInfo.address}
+              onChange={(e) => handleCompanyChange("address", e.target.value)}
+              placeholder="مثال: الإسكندرية، مصر"
+              style={{ width: "100%", padding: "10px 12px", background: C.navyMid, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: 13, fontFamily: "'Cairo', sans-serif", outline: "none" }}
+            />
+          </div>
+          
+          {/* Phone */}
+          <div>
+            <label style={{ display: "block", color: C.textMuted, fontSize: 13, fontWeight: 600, marginBottom: 8 }}>رقم الهاتف</label>
+            <input
+              type="tel"
+              value={companyInfo.phone}
+              onChange={(e) => handleCompanyChange("phone", e.target.value)}
+              placeholder="+20 3 000 0000"
+              style={{ width: "100%", padding: "10px 12px", background: C.navyMid, border: `1px solid ${C.border}`, borderRadius: 8, color: C.text, fontSize: 13, fontFamily: "'Cairo', sans-serif", outline: "none" }}
+            />
+          </div>
+        </div>
+
+        <div style={{ background: `${C.success}15`, border: `1px solid ${C.success}40`, borderRadius: 8, padding: "10px 14px" }}>
+          <span style={{ color: C.success, fontSize: 13 }}>✓ بيانات الشركة محفوظة تلقائياً وستظهر في التقارير المصدَّرة</span>
         </div>
       </div>
 
